@@ -5,7 +5,53 @@
 <head>
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Angkorkey</title>
+    
+    <!-- Primary Meta Tags & SEO -->
+    <title>{% block title %}Angkorkey — Buy Earphones, IEMs & Headphones in Cambodia{% endblock %}</title>
+    <meta name="title" content="{% block meta_title %}Angkorkey — Buy Earphones, IEMs & Headphones in Cambodia{% endblock %}">
+    <meta name="description" content="{% block meta_description %}Shop authentic earphones, IEMs, headphones, and audio gear at Angkorkey in Cambodia. Best prices, warranty, and fast delivery to Phnom Penh & provinces.{% endblock %}">
+    <meta name="keywords" content="{% block meta_keywords %}earphones cambodia, headphones phnom penh, IEM cambodia, buy earphones cambodia, audio accessories, angkorkey, moondrop cambodia, tangzu cambodia, kz earphones cambodia, កាស់ cambodia{% endblock %}">
+    <meta name="author" content="Angkorkey">
+    <meta name="robots" content="{% block meta_robots %}index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1{% endblock %}">
+    <link rel="canonical" href="{% block canonical %}https://angkorkey.store{{ request.path }}{% endblock %}">
+    <link rel="alternate" hreflang="en" href="https://angkorkey.store{{ request.path }}">
+    <link rel="alternate" hreflang="km" href="https://angkorkey.store{{ request.path }}">
+    <link rel="alternate" hreflang="x-default" href="https://angkorkey.store{{ request.path }}">
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:site_name" content="Angkorkey">
+    <meta property="og:title" content="{% block og_title %}Angkorkey — Buy Earphones, IEMs & Headphones in Cambodia{% endblock %}">
+    <meta property="og:description" content="{% block og_description %}Shop authentic earphones, IEMs, headphones & audio gear in Cambodia. Best prices, warranty & fast delivery.{% endblock %}">
+    <meta property="og:url" content="{% block og_url %}https://angkorkey.store{{ request.path }}{% endblock %}">
+    <meta property="og:type" content="{% block og_type %}website{% endblock %}">
+    <meta property="og:image" content="{% block og_image %}https://angkorkey.store/static/logo/logo.jpg{% endblock %}">
+    <meta property="og:locale" content="en_US">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{% block twitter_title %}Angkorkey — Buy Earphones, IEMs & Headphones in Cambodia{% endblock %}">
+    <meta name="twitter:description" content="{% block twitter_description %}Shop authentic earphones, IEMs, headphones & audio gear in Cambodia. Best prices & fast delivery.{% endblock %}">
+    <meta name="twitter:image" content="{% block twitter_image %}https://angkorkey.store/static/logo/logo.jpg{% endblock %}">
+
+    <!-- Structured Data (JSON-LD) -->
+    {% block structured_data %}
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "OnlineStore",
+      "name": "Angkorkey",
+      "url": "https://angkorkey.store",
+      "logo": "https://angkorkey.store/static/logo/logo.jpg",
+      "description": "Authentic earphones, IEMs, headphones and audio equipment store in Cambodia.",
+      "priceRange": "$",
+      "address": {
+        "@type": "PostalAddress",
+        "addressCountry": "KH"
+      }
+    }
+    </script>
+    {% endblock %}
+
     <link rel="icon" type="image/jpg" href="{{ url_for('static', filename='logo/logo.jpg') }}">
 
     <!-- Initialize theme immediately to prevent layout flash -->

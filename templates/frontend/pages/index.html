@@ -1,5 +1,60 @@
 {% extends("frontend/main.html") %}
 
+{% block title %}Angkorkey — Buy Earphones, IEMs & Headphones in Cambodia | Phnom Penh{% endblock %}
+{% block meta_title %}Angkorkey — Buy Earphones, IEMs & Headphones in Cambodia | Phnom Penh{% endblock %}
+{% block meta_description %}Angkorkey is Cambodia's premier shop for genuine in-ear monitors (IEMs), audiophile earphones, headphones, DACs & audio cables. Fast shipping across Phnom Penh & all provinces.{% endblock %}
+
+{% block structured_data %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": "Angkorkey",
+  "url": "https://angkorkey.store",
+  "potentialAction": {
+    "@type": "SearchAction",
+    "target": "https://angkorkey.store/products?search={search_term_string}",
+    "query-input": "required name=search_term_string"
+  }
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "ElectronicsStore",
+  "name": "Angkorkey",
+  "image": "https://angkorkey.store/static/logo/logo.jpg",
+  "url": "https://angkorkey.store",
+  "telephone": "+85586689620",
+  "priceRange": "$",
+  "address": {
+    "@type": "PostalAddress",
+    "addressLocality": "Phnom Penh",
+    "addressCountry": "KH"
+  },
+  "geo": {
+    "@type": "GeoCoordinates",
+    "latitude": "11.5564",
+    "longitude": "104.9282"
+  },
+  "openingHoursSpecification": {
+    "@type": "OpeningHoursSpecification",
+    "dayOfWeek": [
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+      "Sunday"
+    ],
+    "opens": "08:00",
+    "closes": "21:00"
+  }
+}
+</script>
+{% endblock %}
+
 {% block content %}
 
     <!-- ====================================== -->

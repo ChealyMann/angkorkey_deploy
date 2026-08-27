@@ -1,5 +1,54 @@
 {% extends "frontend/main.html" %}
 
+{% block title %}{{ product.name }} — Buy at Angkorkey Cambodia{% endblock %}
+{% block meta_title %}{{ product.name }} | Best Price in Cambodia — Angkorkey{% endblock %}
+{% block meta_description %}Buy {{ product.name }}{% if product.brand %} by {{ product.brand.name }}{% endif %} in Cambodia for ${{ "%.2f"|format(product.price) }}. 100% authentic quality, warranty & fast delivery in Phnom Penh & nationwide.{% endblock %}
+{% block meta_keywords %}{{ product.name }}, {{ product.name }} cambodia, {{ product.name }} price, {% if product.brand %}{{ product.brand.name }} earphones,{% endif %} buy earphones cambodia, angkorkey{% endblock %}
+{% block canonical %}https://angkorkey.store/product_detail/{{ product.id }}{% endblock %}
+
+{% block og_title %}{{ product.name }} — ${{ "%.2f"|format(product.price) }} | Angkorkey Cambodia{% endblock %}
+{% block og_description %}Buy authentic {{ product.name }} at Angkorkey. Fast delivery across Cambodia.{% endblock %}
+{% block og_type %}product{% endblock %}
+{% block og_image %}{% if product.image %}https://angkorkey.store/static/images/{{ product.image }}{% else %}https://angkorkey.store/static/logo/logo.jpg{% endif %}{% endblock %}
+
+{% block twitter_title %}{{ product.name }} — ${{ "%.2f"|format(product.price) }} | Angkorkey Cambodia{% endblock %}
+{% block twitter_description %}Buy authentic {{ product.name }} at Angkorkey. Fast delivery across Cambodia.{% endblock %}
+{% block twitter_image %}{% if product.image %}https://angkorkey.store/static/images/{{ product.image }}{% else %}https://angkorkey.store/static/logo/logo.jpg{% endif %}{% endblock %}
+
+{% block structured_data %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org/",
+  "@type": "Product",
+  "name": {{ product.name | tojson }},
+  "image": [
+    {% if product.image %}"https://angkorkey.store/static/images/{{ product.image }}"{% else %}"https://angkorkey.store/static/logo/logo.jpg"{% endif %}
+  ],
+  "description": {{ (product.desc or (product.name + ' available at Angkorkey Cambodia.')) | tojson }},
+  "sku": "AK-{{ product.id }}",
+  {% if product.brand %}
+  "brand": {
+    "@type": "Brand",
+    "name": {{ product.brand.name | tojson }}
+  },
+  {% endif %}
+  "offers": {
+    "@type": "Offer",
+    "url": "https://angkorkey.store/product_detail/{{ product.id }}",
+    "priceCurrency": "USD",
+    "price": "{{ "%.2f"|format(product.price) }}",
+    "priceValidUntil": "2027-12-31",
+    "itemCondition": "https://schema.org/NewCondition",
+    "availability": "https://schema.org/InStock",
+    "seller": {
+      "@type": "Organization",
+      "name": "Angkorkey"
+    }
+  }
+}
+</script>
+{% endblock %}
+
 {% block content %}
 
 {# --- Determine Initial Variant State to Prevent UI Flicker --- #}
