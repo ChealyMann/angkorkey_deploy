@@ -20,6 +20,7 @@
                 <a href="{{ facebook_url }}"
                    target="_blank"
                    rel="noopener noreferrer"
+                   aria-label="Follow us on Facebook"
                    class="flex items-center justify-center w-8 h-8 rounded-full bg-gray-50 dark:bg-zinc-900 border border-gray-200/30 dark:border-zinc-800/30 text-gray-500 hover:text-[#1877F2] hover:bg-[#1877F2]/10 hover:border-[#1877F2]/30 dark:text-zinc-400 dark:hover:text-[#1877F2] dark:hover:bg-[#1877F2]/20 hover:scale-110 hover:-translate-y-0.5 transition-all duration-200 shadow-sm"
                    title="Facebook">
                     <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
@@ -33,6 +34,7 @@
                 <a href="{{ tiktok_url }}"
                    target="_blank"
                    rel="noopener noreferrer"
+                   aria-label="Follow us on TikTok"
                    class="flex items-center justify-center w-8 h-8 rounded-full bg-gray-50 dark:bg-zinc-900 border border-gray-200/30 dark:border-zinc-800/30 text-gray-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white hover:bg-zinc-950/10 dark:hover:bg-white/10 hover:scale-110 hover:-translate-y-0.5 transition-all duration-200 shadow-sm"
                    title="TikTok">
                     <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
@@ -46,6 +48,7 @@
                 <a href="https://t.me/{{ telegram_username }}"
                    target="_blank"
                    rel="noopener noreferrer"
+                   aria-label="Contact us on Telegram"
                    class="flex items-center justify-center w-8 h-8 rounded-full bg-gray-50 dark:bg-zinc-900 border border-gray-200/30 dark:border-zinc-800/30 text-gray-500 hover:text-[#229ED9] hover:bg-[#229ED9]/10 hover:border-[#229ED9]/30 dark:text-zinc-400 dark:hover:text-[#229ED9] dark:hover:bg-[#229ED9]/20 hover:scale-110 hover:-translate-y-0.5 transition-all duration-200 shadow-sm"
                    title="Telegram">
                     <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
@@ -115,6 +118,7 @@
 
         <!-- Home -->
         <a href="{{ url_for('home.home') }}"
+            aria-label="Home page"
             class="flex flex-col items-center justify-center relative group h-full w-full py-1 text-decoration-none select-none">
             {% if request.endpoint == 'home.home' %}
             <i class="h-5 w-5 text-zinc-950 dark:text-white transition-all duration-300 scale-105" data-lucide="home"></i>
@@ -127,6 +131,7 @@
 
         <!-- Shop -->
         <a href="{{ url_for('home.products') }}"
+            aria-label="Shop all products"
             class="flex flex-col items-center justify-center relative group h-full w-full py-1 text-decoration-none select-none">
             {% if request.endpoint == 'home.products' %}
             <i class="h-5 w-5 text-zinc-950 dark:text-white transition-all duration-300 scale-105" data-lucide="store"></i>
@@ -139,6 +144,7 @@
 
         <!-- Promotion -->
         <a href="{{ url_for('home.promotions') }}"
+           aria-label="View product promotions and deals"
            class="flex flex-col items-center justify-center relative group h-full w-full py-1 text-decoration-none select-none">
             {% if request.endpoint == 'home.promotions' %}
             <i class="h-5 w-5 text-zinc-950 dark:text-white transition-all duration-300 scale-105" data-lucide="tag"></i>
@@ -151,6 +157,7 @@
 
         <!-- Category -->
         <a href="{{ url_for('home.all_categories') }}"
+           aria-label="Browse product categories"
            class="flex flex-col items-center justify-center relative group h-full w-full py-1 text-decoration-none select-none">
             {% if request.endpoint == 'home.all_categories' %}
             <i class="h-5 w-5 text-zinc-950 dark:text-white transition-all duration-300 scale-105" data-lucide="layout-grid"></i>

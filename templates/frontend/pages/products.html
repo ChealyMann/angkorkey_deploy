@@ -168,6 +168,7 @@
                     <input
                             type="text"
                             id="searchInput"
+                            aria-label="{{ _('search_placeholder') }}"
                             placeholder="{{ _('search_placeholder') }}"
                             class="w-full bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-none py-2.5 pl-10 pr-4 text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-zinc-200 dark:focus:ring-zinc-800 focus:border-zinc-950 dark:focus:border-zinc-50 transition-all shadow-xs"
                     >
@@ -189,6 +190,7 @@
                 <div class="relative w-full sm:w-56">
                     <select
                             id="sortSelect"
+                            aria-label="Sort products by"
                             class="w-full bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-none py-2.5 pl-4 pr-10 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-zinc-200 dark:focus:ring-zinc-800 focus:border-zinc-950 dark:focus:border-zinc-50 transition-all shadow-xs appearance-none cursor-pointer"
                     >
                         <option value="featured" {% if sort_by == 'featured' %}selected{% endif %}>{{ _('sort_featured') }}</option>

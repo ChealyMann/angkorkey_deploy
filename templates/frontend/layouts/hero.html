@@ -9,6 +9,8 @@
                     <!-- Dynamic Slide -->
                     <div class="min-w-full relative aspect-[3/1] md:aspect-[5/1]">
                         <img src="{{ url_for('static', filename='images/' + promotion.image) }}"
+                             {% if loop.first %}fetchpriority="high"{% else %}loading="lazy"{% endif %}
+                             decoding="async"
                              class="w-full h-full object-cover opacity-90 md:opacity-85" alt="{{ promotion.title }}">
                         <div class="absolute inset-0 bg-gradient-to-t from-black/50 via-black/10 to-transparent"></div>
                         <!-- Slide Content (Desktop Only) -->
@@ -24,6 +26,8 @@
                 <!-- Slide 1 -->
                 <div class="min-w-full relative aspect-[16/9] md:aspect-[21/9]">
                     <img src="https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=2070&auto=format&fit=crop"
+                         fetchpriority="high"
+                         decoding="async"
                          class="w-full h-full object-cover opacity-90 md:opacity-80" alt="Tech">
                     <div class="absolute inset-0 bg-gradient-to-t from-black/50 via-black/10 to-transparent"></div>
                     <!-- Slide Content (Desktop Only) -->
@@ -39,6 +43,8 @@
                 <!-- Slide 2 -->
                 <div class="min-w-full relative aspect-[16/9] md:aspect-[21/9]">
                     <img src="https://images.unsplash.com/photo-1595225476474-87563907a212?q=80&w=2071&auto=format&fit=crop"
+                         loading="lazy"
+                         decoding="async"
                          class="w-full h-full object-cover opacity-90 md:opacity-80" alt="Setup">
                     <div class="absolute inset-0 bg-gradient-to-t from-black/50 via-black/10 to-transparent"></div>
                     <!-- Slide Content (Desktop Only) -->
@@ -56,10 +62,12 @@
         <!-- Carousel Navigation Buttons -->
         <div class="absolute bottom-4 right-4 md:bottom-6 md:right-6 flex gap-2">
             <button id="prev-btn"
+                    aria-label="Previous promotional banner slide"
                     class="bg-white/80 dark:bg-zinc-900/80 hover:bg-zinc-950 dark:hover:bg-zinc-50 hover:text-white dark:hover:text-zinc-950 backdrop-blur-md p-2 md:p-3 rounded-full text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-800/80 transition shadow-sm cursor-pointer">
                 <i class="h-4 w-4 md:h-5 md:w-5" data-lucide="chevron-left"></i>
             </button>
             <button id="next-btn"
+                    aria-label="Next promotional banner slide"
                     class="bg-white/80 dark:bg-zinc-900/80 hover:bg-zinc-950 dark:hover:bg-zinc-50 hover:text-white dark:hover:text-zinc-950 backdrop-blur-md p-2 md:p-3 rounded-full text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-800/80 transition shadow-sm cursor-pointer">
                 <i class="h-4 w-4 md:h-5 md:w-5" data-lucide="chevron-right"></i>
             </button>

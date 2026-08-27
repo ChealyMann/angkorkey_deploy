@@ -127,28 +127,28 @@
                 <!-- Language Selector (Animated Sliding Switch for Desktop, Simple Flag Toggle for Mobile) -->
                 <div class="relative hidden md:flex items-center bg-zinc-100 dark:bg-zinc-800 p-1 rounded-full w-24 h-9 shadow-xs border border-gray-200/40 dark:border-zinc-700/40">
                     <div class="absolute top-1 bottom-1 left-1 w-[42px] bg-white dark:bg-zinc-955 rounded-full shadow-sm transition-transform duration-300 ease-in-out {% if session.get('lang', 'en') == 'km' %}translate-x-[42px]{% else %}translate-x-0{% endif %}"></div>
-                    <a href="/set_lang/en" class="relative z-10 flex-1 flex items-center justify-center h-full cursor-pointer" title="English">
-                        <img src="https://flagcdn.com/24x18/gb.png" alt="English" class="w-5 h-3.5 object-cover rounded-xs {% if session.get('lang', 'en') != 'en' %}opacity-50 hover:opacity-80{% endif %} transition-opacity duration-300">
+                    <a href="/set_lang/en" aria-label="Switch language to English" class="relative z-10 flex-1 flex items-center justify-center h-full cursor-pointer" title="English">
+                        <img src="https://flagcdn.com/24x18/gb.png" width="20" height="14" alt="English" class="w-5 h-3.5 object-cover rounded-xs {% if session.get('lang', 'en') != 'en' %}opacity-50 hover:opacity-80{% endif %} transition-opacity duration-300">
                     </a>
-                    <a href="/set_lang/km" class="relative z-10 flex-1 flex items-center justify-center h-full cursor-pointer" title="ភាសាខ្មែរ">
-                        <img src="https://flagcdn.com/24x18/kh.png" alt="Khmer" class="w-5 h-3.5 object-cover rounded-xs {% if session.get('lang', 'en') != 'km' %}opacity-50 hover:opacity-80{% endif %} transition-opacity duration-300">
+                    <a href="/set_lang/km" aria-label="Switch language to Khmer" class="relative z-10 flex-1 flex items-center justify-center h-full cursor-pointer" title="ភាសាខ្មែរ">
+                        <img src="https://flagcdn.com/24x18/kh.png" width="20" height="14" alt="Khmer" class="w-5 h-3.5 object-cover rounded-xs {% if session.get('lang', 'en') != 'km' %}opacity-50 hover:opacity-80{% endif %} transition-opacity duration-300">
                     </a>
                 </div>
 
                 <!-- Mobile Single Flag Toggle -->
                 <div class="md:hidden flex items-center">
                     {% if session.get('lang', 'en') == 'km' %}
-                    <a href="/set_lang/en" class="mobile-lang-toggle p-2 flex items-center justify-center rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors" title="Switch to English">
-                        <img src="https://flagcdn.com/24x18/gb.png" alt="English" class="w-5 h-3.5 object-cover rounded-xs border border-gray-200/50 dark:border-zinc-700/50">
+                    <a href="/set_lang/en" aria-label="Switch language to English" class="mobile-lang-toggle p-2 flex items-center justify-center rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors" title="Switch to English">
+                        <img src="https://flagcdn.com/24x18/gb.png" width="20" height="14" alt="English" class="w-5 h-3.5 object-cover rounded-xs border border-gray-200/50 dark:border-zinc-700/50">
                     </a>
                     {% else %}
-                    <a href="/set_lang/km" class="mobile-lang-toggle p-2 flex items-center justify-center rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors" title="ប្តូរទៅភាសាខ្មែរ">
-                        <img src="https://flagcdn.com/24x18/kh.png" alt="Khmer" class="w-5 h-3.5 object-cover rounded-xs border border-gray-200/50 dark:border-zinc-700/50">
+                    <a href="/set_lang/km" aria-label="Switch language to Khmer" class="mobile-lang-toggle p-2 flex items-center justify-center rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors" title="ប្តូរទៅភាសាខ្មែរ">
+                        <img src="https://flagcdn.com/24x18/kh.png" width="20" height="14" alt="Khmer" class="w-5 h-3.5 object-cover rounded-xs border border-gray-200/50 dark:border-zinc-700/50">
                     </a>
                     {% endif %}
                 </div>
 
-                <a href="{{ url_for('home.cart') }}" class="relative p-2 text-zinc-500 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white transition-colors group">
+                <a href="{{ url_for('home.cart') }}" aria-label="View shopping cart" class="relative p-2 text-zinc-500 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white transition-colors group">
                     <i class="h-6 w-6 group-hover:scale-110 transition-transform" data-lucide="shopping-cart"></i>
                     <span id="global-cart-badge" class="absolute -top-1 -right-1 bg-zinc-950 dark:bg-white text-white dark:text-black text-[9px] rounded-full w-4 h-4 flex items-center justify-center font-bold hidden border border-zinc-200 dark:border-zinc-800">
                         0
@@ -157,6 +157,7 @@
 
                 <div class="md:hidden">
                     <button id="mobile-menu-button"
+                            aria-label="Toggle navigation menu"
                             class="relative w-10 h-10 text-zinc-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white focus:outline-none cursor-pointer">
                         <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-6 h-4 flex flex-col justify-between">
                             <span class="w-full h-0.5 bg-current rounded-full transition-all duration-300 transform burger-line-top"></span>

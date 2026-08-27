@@ -529,9 +529,9 @@
 <div class="pd-page">
 
 <div id="lightbox" role="dialog" aria-modal="true" aria-label="Image viewer">
-    <button id="lb-close" class="absolute top-5 right-6 text-white/60 hover:text-white text-3xl leading-none z-10">&times;</button>
-    <button id="lb-prev" class="absolute left-5 top-1/2 -translate-y-1/2 text-white/50 hover:text-white text-4xl leading-none z-10">&#8592;</button>
-    <button id="lb-next" class="absolute right-5 top-1/2 -translate-y-1/2 text-white/50 hover:text-white text-4xl leading-none z-10">&#8594;</button>
+    <button id="lb-close" aria-label="Close image lightbox" class="absolute top-5 right-6 text-white/60 hover:text-white text-3xl leading-none z-10">&times;</button>
+    <button id="lb-prev" aria-label="Previous image" class="absolute left-5 top-1/2 -translate-y-1/2 text-white/50 hover:text-white text-4xl leading-none z-10">&#8592;</button>
+    <button id="lb-next" aria-label="Next image" class="absolute right-5 top-1/2 -translate-y-1/2 text-white/50 hover:text-white text-4xl leading-none z-10">&#8594;</button>
     <img id="lb-img" src="" alt="Product image fullscreen">
     <span id="lb-counter" class="absolute bottom-5 left-1/2 -translate-x-1/2 text-xs text-white/40 font-medium tracking-widest"></span>
 </div>
@@ -541,6 +541,7 @@
     <div class="flex items-center justify-between mb-10 anim-1">
         <div class="flex items-center gap-4">
             <button onclick="history.back()"
+                aria-label="Go back to previous page"
                 class="flex items-center justify-center gap-1.5 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md border border-gray-200/80 dark:border-zinc-800/80 text-[10px] font-bold px-4 py-2 rounded-full uppercase tracking-widest text-zinc-900 dark:text-white shadow-xs cursor-pointer hover:bg-zinc-950 dark:hover:bg-zinc-50 hover:text-white dark:hover:text-zinc-950 hover:border-zinc-950 dark:hover:border-zinc-50 transition-all duration-300 hover:scale-105 active:scale-95 group"
                 title="Back"
             >
@@ -567,6 +568,7 @@
                     src="{{ first_image }}"
                     alt="{{ product.name }}"
                     fetchpriority="high"
+                    decoding="async"
                     class="w-full h-full object-cover object-center">
 
                 <div class="absolute top-4 left-4 z-10">
@@ -583,12 +585,14 @@
                 {% endif %}
 
                 <button id="prev-btn"
+                    aria-label="Previous gallery image"
                     class="nav-arrow absolute left-3 top-1/2 -translate-y-1/2 bg-white/80 dark:bg-zinc-900/80 border border-gray-200 dark:border-zinc-800 text-gray-700 dark:text-zinc-300 hover:bg-zinc-950 dark:hover:bg-zinc-50 hover:text-white dark:hover:text-zinc-950 hover:border-zinc-950 dark:hover:border-zinc-50 p-2.5 rounded-none opacity-0 group-hover:opacity-100 z-20 shadow-sm transition">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/>
                     </svg>
                 </button>
                 <button id="next-btn"
+                    aria-label="Next gallery image"
                     class="nav-arrow absolute right-3 top-1/2 -translate-y-1/2 bg-white/80 dark:bg-zinc-900/80 border border-gray-200 dark:border-zinc-800 text-gray-700 dark:text-zinc-300 hover:bg-zinc-950 dark:hover:bg-zinc-50 hover:text-white dark:hover:text-zinc-950 hover:border-zinc-950 dark:hover:border-zinc-50 p-2.5 rounded-none opacity-0 group-hover:opacity-100 z-20 shadow-sm transition">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/>
@@ -657,9 +661,9 @@
 
                 <!-- Quantity Selection Section (Inline, shared by PC and mobile) -->
                 <div class="flex items-center gap-3 info-card px-3 py-2">
-                    <button class="qty-btn" id="qty-minus">−</button>
+                    <button class="qty-btn" id="qty-minus" aria-label="Decrease quantity">−</button>
                     <span id="qty-display" class="text-gray-900 dark:text-white font-semibold text-sm w-6 text-center select-none">1</span>
-                    <button class="qty-btn" id="qty-plus">+</button>
+                    <button class="qty-btn" id="qty-plus" aria-label="Increase quantity">+</button>
                 </div>
             </div>
 
