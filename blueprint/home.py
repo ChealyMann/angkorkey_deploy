@@ -390,7 +390,7 @@ def products(category_id=None):
             "pages": pagination.pages
         })
         
-        response.headers["Cache-Control"] = "public, max-age=3600"
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
         return response
 
     categories = Category.query.filter_by(status="true").all()

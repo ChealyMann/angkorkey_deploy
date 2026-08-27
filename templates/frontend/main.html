@@ -687,9 +687,8 @@
 </div>
 `;
 
-        // SPA-like tab switcher for mobile bottom navigation bar with cache
+        // SPA-like tab switcher for mobile bottom navigation bar
         const contentMain = document.getElementById('content-main');
-        const pageCache = {};
         const scrollCache = {};
         let currentLang = localStorage.getItem('lang') || document.documentElement.getAttribute('lang') || 'en';
 
@@ -926,6 +925,10 @@
 
         async function navigateTo(url, isBack = false) {
             window.startLoadingBar();
+            // Save scroll position for the current path before leaving
+            scrollCache[window.location.pathname] = window.scrollY;
+
+            // If navigating away from drawer, ensure drawer is dismissed smoothly
             if (drawerOpen && !url.includes('/product_detail/')) {
                 closeDrawer();
             }
@@ -942,27 +945,26 @@
                     }
                 }
             }
-            const cacheKey = `${url}::${currentLang}`;
             
             let htmlText;
-            if (pageCache[cacheKey]) {
-                htmlText = pageCache[cacheKey];
-            } else {
-                if (url.includes('/product_detail/') && contentMain) {
-                    contentMain.innerHTML = SKELETON_TEMPLATE;
-                    contentMain.style.opacity = '1';
-                    window.scrollTo({ top: 0, behavior: 'instant' });
-                }
-                try {
-                    const res = await fetch(url);
-                    htmlText = await res.text();
-                    pageCache[cacheKey] = htmlText;
-                } catch (err) {
-                    console.error('Failed to load page:', err);
+            if (url.includes('/product_detail/') && contentMain) {
+                contentMain.innerHTML = SKELETON_TEMPLATE;
+                contentMain.style.opacity = '1';
+                window.scrollTo({ top: 0, behavior: 'instant' });
+            }
+            try {
+                const res = await fetch(url);
+                if (!res.ok) {
                     window.cancelLoadingBar();
                     window.location.href = url;
                     return;
                 }
+                htmlText = await res.text();
+            } catch (err) {
+                console.error('Failed to load page:', err);
+                window.cancelLoadingBar();
+                window.location.href = url;
+                return;
             }
             
             const parser = new DOMParser();
@@ -991,7 +993,7 @@
             
             // Swap Bottom Nav Container
             const oldNav = document.getElementById('bottom-nav-container');
-            const newNav = doc.getElementById('bottom-nav-container');
+            const newNav = doc.querySelector('#bottom-nav-container');
             if (oldNav && newNav) {
                 oldNav.innerHTML = newNav.innerHTML;
                 const newMobileLinks = oldNav.querySelectorAll('a');
@@ -1002,7 +1004,7 @@
             
             // Swap Mobile Menu
             const oldMenu = document.getElementById('mobile-menu');
-            const newMenu = doc.getElementById('mobile-menu');
+            const newMenu = doc.querySelector('#mobile-menu');
             if (oldMenu && newMenu) {
                 oldMenu.outerHTML = newMenu.outerHTML;
             }
@@ -1088,22 +1090,21 @@
                     }
                 }
                 
-                const cacheKey = `${href}::${currentLang}`;
                 let htmlText;
-                
-                if (pageCache[cacheKey]) {
-                    htmlText = pageCache[cacheKey];
-                } else {
-                    try {
-                        const res = await fetch(href);
-                        htmlText = await res.text();
-                        pageCache[cacheKey] = htmlText;
-                    } catch (err) {
-                        console.error('Failed to load product detail:', err);
+                try {
+                    const res = await fetch(href);
+                    if (!res.ok) {
                         window.cancelLoadingBar();
+                        if (drawer) closeDrawer();
                         window.location.href = href;
                         return;
                     }
+                    htmlText = await res.text();
+                } catch (err) {
+                    console.error('Failed to load product detail:', err);
+                    window.cancelLoadingBar();
+                    window.location.href = href;
+                    return;
                 }
                 
                 openDrawer(htmlText);
@@ -1128,7 +1129,7 @@
             }
         });
 
-        // AJAX Language Switcher (No full page reload, uses caching)
+        // AJAX Language Switcher (No full page reload)
         document.body.addEventListener('click', async (e) => {
             const langLink = e.target.closest('a[href^="/set_lang/"]');
             if (langLink) {
@@ -1188,11 +1189,7 @@
             
             // If we are going forward/back to a product detail page and the drawer is not open
             if (path.includes('/product_detail/')) {
-                const cacheKey = `${path}::${currentLang}`;
-                const isCached = !!pageCache[cacheKey];
-
-                // Immediately show skeleton and hide bottom navigation bar during popstate history navigation if not cached
-                if (!isCached && drawer && drawerContent) {
+                if (drawer && drawerContent) {
                     drawerContent.innerHTML = SKELETON_TEMPLATE;
                     drawer.classList.remove('hidden');
                     drawer.offsetHeight;
@@ -1207,18 +1204,17 @@
                     }
                 }
 
-                let htmlText = pageCache[cacheKey];
-                if (!htmlText) {
-                    try {
-                        const res = await fetch(path);
-                        htmlText = await res.text();
-                        pageCache[cacheKey] = htmlText;
-                    } catch (err) {
+                try {
+                    const res = await fetch(path);
+                    if (!res.ok) {
                         window.location.href = path;
                         return;
                     }
+                    const htmlText = await res.text();
+                    openDrawer(htmlText);
+                } catch (err) {
+                    window.location.href = path;
                 }
-                openDrawer(htmlText);
                 return;
             }
             
