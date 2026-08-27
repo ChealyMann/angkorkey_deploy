@@ -7,7 +7,7 @@ from flask import Flask, render_template, request, redirect, url_for, flash, ses
 from werkzeug.security import generate_password_hash
 from flask_migrate import Migrate
 
-from extensions import db, cache, limiter
+from extensions import db, limiter
 
 from blueprint.admin.admin import admin_bp
 from blueprint.admin.brand.brand import brand_bp
@@ -26,21 +26,7 @@ from translations import TRANSLATIONS
 
 app = Flask(__name__)
 
-# ------------------------------------------------------------
-# Proxy and HTTPS Configuration
-# ------------------------------------------------------------
-# Trust headers sent by reverse proxy (like Cloudflare/cPanel Apache)
-from werkzeug.middleware.proxy_fix import ProxyFix
-app.wsgi_app = ProxyFix(
-    app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1, x_prefix=1
-)
 
-# Ensure generated external URLs (like redirects) use https
-app.config["PREFERRED_URL_SCHEME"] = "https"
-
-# Secure cookie configuration (conditional in debug mode to avoid breaking local dev)
-if not app.debug:
-    app.config["SESSION_COOKIE_SECURE"] = True
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 
@@ -71,10 +57,6 @@ app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(minutes=30)
 # Upload folder
 app.config["UPLOAD_FOLDER"] = UPLOAD_DIR
 
-# Safe cache config for cPanel
-app.config["CACHE_TYPE"] = "SimpleCache"
-app.config["CACHE_DEFAULT_TIMEOUT"] = 300
-
 # Safe limiter config for small cPanel hosting
 app.config["RATELIMIT_STORAGE_URI"] = "memory://"
 
@@ -83,7 +65,6 @@ app.config["RATELIMIT_STORAGE_URI"] = "memory://"
 # ------------------------------------------------------------
 db.init_app(app)
 migrate = Migrate(app, db)
-cache.init_app(app)
 limiter.init_app(app)
 
 # ------------------------------------------------------------
@@ -124,11 +105,6 @@ app.config["icon"] = "static/admin/assets/images/icon_logo.jpg"
 
 @app.before_request
 def before_request():
-    # Force HTTPS redirect in production if requested over http
-    if not app.debug and request.scheme == "http":
-        url = request.url.replace("http://", "https://", 1)
-        return redirect(url, code=301)
-
     url = request.path
 
     if url.startswith("/admin/"):
