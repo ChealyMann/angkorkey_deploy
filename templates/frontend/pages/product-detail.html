@@ -81,9 +81,12 @@
     {% set discount_pct = 0 %}
 {% endif %}
 
-<style>
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Serif+Display:ital@0;1&display=swap');
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Serif+Display:ital@0;1&display=swap" media="print" onload="this.media='all'">
+<noscript>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Serif+Display:ital@0;1&display=swap">
+</noscript>
 
+<style>
 :root {
     --accent: #dc2626; /* Premium red theme */
     --accent-dim: rgba(220, 38, 38, 0.08);
@@ -99,7 +102,7 @@
     --accent-dim: rgba(220, 38, 38, 0.15);
 }
 
-.pd-page { font-family: 'DM Sans', sans-serif; }
+.pd-page { font-family: 'DM Sans', var(--font-sans), sans-serif; }
 
 .dark .var-btn:hover:not(:disabled) {
     color: #ffffff;
@@ -347,18 +350,30 @@
     color: #09090b !important;
 }
 
-/* Image dots */
+/* Image dots with expanded touch target */
 .dot {
-    width: 5px; height: 5px;
-    border-radius: 0px;
-    background: rgba(0,0,0,0.25);
-    transition: background .2s, transform .2s;
+    width: 24px; height: 24px;
+    padding: 9px;
+    box-sizing: border-box;
+    background-color: transparent;
+    border: none;
     cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
-.dark .dot {
-    background: rgba(255,255,255,0.25);
+.dot::after {
+    content: '';
+    display: block;
+    width: 6px; height: 6px;
+    border-radius: 0px;
+    background: rgba(0,0,0,0.3);
+    transition: background .2s, transform .2s;
 }
-.dot.active { background: var(--accent); transform: scale(1.4); }
+.dark .dot::after {
+    background: rgba(255,255,255,0.35);
+}
+.dot.active::after { background: var(--accent); transform: scale(1.4); }
 
 /* Lightbox */
 #lightbox {
@@ -550,12 +565,12 @@
             </button>
         </div>
 
-        <nav class="hidden sm:flex items-center text-xs text-gray-400 gap-2">
+        <nav class="hidden sm:flex items-center text-xs text-gray-600 dark:text-zinc-400 gap-2">
             <a href="{{ url_for('home.home') }}" class="hover:text-zinc-950 dark:hover:text-white transition-colors">Home</a>
             <span>/</span>
             <a href="{{ url_for('home.products', category_id=product.category_id) }}" class="hover:text-zinc-950 dark:hover:text-white transition-colors">{{ product.category_name.name }}</a>
             <span>/</span>
-            <span class="text-gray-600 dark:text-zinc-400 truncate max-w-[180px]">{{ product.name }}</span>
+            <span class="text-gray-800 dark:text-zinc-300 font-medium truncate max-w-[180px]">{{ product.name }}</span>
         </nav>
     </div>
 
@@ -569,6 +584,8 @@
                     alt="{{ product.name }}"
                     fetchpriority="high"
                     decoding="async"
+                    width="600"
+                    height="600"
                     class="w-full h-full object-cover object-center">
 
                 <div class="absolute top-4 left-4 z-10">
@@ -600,12 +617,12 @@
                 </button>
 
                 <div class="absolute bottom-4 right-4 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <span class="text-[10px] text-gray-400 font-medium tracking-widest uppercase bg-white/80 backdrop-blur-sm border border-gray-200 px-2 py-1 rounded-md">{{ _('click_to_zoom') }}</span>
+                    <span class="text-[10px] text-gray-600 dark:text-zinc-300 font-medium tracking-widest uppercase bg-white/80 dark:bg-zinc-900/80 backdrop-blur-sm border border-gray-200 dark:border-zinc-800 px-2 py-1 rounded-md">{{ _('click_to_zoom') }}</span>
                 </div>
 
                 <div id="dot-container" class="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-10">
                     {% for img in initial_gallery_images %}
-                    <button class="dot {% if loop.first %}active{% endif %}" data-index="{{ loop.index0 }}"></button>
+                    <button class="dot {% if loop.first %}active{% endif %}" data-index="{{ loop.index0 }}" aria-label="View slide {{ loop.index }}"></button>
                     {% endfor %}
                 </div>
             </div>
@@ -613,8 +630,9 @@
             <div class="flex gap-2.5 mt-3 overflow-x-auto scroll-hide py-1" id="thumbnail-container">
                 {% for img in initial_gallery_images %}
                 <button data-src="{{ img.src }}" data-index="{{ loop.index0 }}"
+                    aria-label="View product image {{ loop.index }} of {{ initial_gallery_images|length }}"
                     class="thumb-btn {% if loop.first %}active{% else %}opacity-40{% endif %} relative flex-shrink-0 w-[76px] h-[76px] rounded-none overflow-hidden bg-gray-100 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 shadow-xs">
-                    <img src="{{ img.src }}" class="w-full h-full object-cover" alt="{{ img.alt }}" loading="lazy">
+                    <img src="{{ img.src }}" class="w-full h-full object-cover" alt="{{ img.alt }}" loading="lazy" width="76" height="76">
                 </button>
                 {% endfor %}
             </div>
@@ -631,7 +649,7 @@
                         </a>
                     </div>
                     
-                    <button id="copy-link-btn" class="share-btn select-none">
+                    <button id="copy-link-btn" aria-label="Share product link" class="share-btn select-none">
                         <i class="w-3.5 h-3.5" data-lucide="link-2"></i>
                         <span>{{ _('share_link') }}</span>
                     </button>
@@ -674,8 +692,8 @@
                 {% for group in option_groups %}
                 <div class="variant-group">
                     <div class="flex items-center justify-between mb-3">
-                        <span class="text-xs font-semibold text-gray-400 uppercase tracking-widest">{{ group.name }}</span>
-                        <span id="selected-{{ group.slug }}" class="text-sm font-semibold text-gray-900">
+                        <span class="text-xs font-semibold text-gray-600 dark:text-zinc-400 uppercase tracking-widest">{{ group.name }}</span>
+                        <span id="selected-{{ group.slug }}" class="text-sm font-semibold text-gray-900 dark:text-zinc-100">
                             {% if first_variant.data %}{{ first_variant.data.options[group.slug] }}{% endif %}
                         </span>
                     </div>
@@ -710,6 +728,7 @@
 
                         <button type="button"
                             title="{{ option.value }}"
+                            aria-label="Select color {{ option.value }}"
                             class="variant-option-btn color-swatch {% if is_selected %}var-active{% endif %}"
                             style="{{ opt_style }}"
                             data-type="{{ group.slug }}"
@@ -1030,13 +1049,14 @@ function initProductDetailPage() {
 
         thumbContainer.innerHTML = images.map((src, i) => `
             <button data-src="${esc(src)}" data-index="${i}"
+                aria-label="View product image ${i + 1} of ${images.length}"
                 class="thumb-btn ${i === 0 ? 'active' : 'opacity-40'} relative flex-shrink-0 w-[76px] h-[76px] rounded-none overflow-hidden bg-gray-100 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 shadow-xs">
-                <img src="${esc(src)}" class="w-full h-full object-cover" alt="Product Image" loading="lazy">
+                <img src="${esc(src)}" class="w-full h-full object-cover" alt="Product Image" loading="lazy" width="76" height="76">
             </button>`).join('');
 
         if (dotContainer) {
             dotContainer.innerHTML = images.map((_, i) => `
-                <button class="dot ${i === 0 ? 'active' : ''}" data-index="${i}"></button>`).join('');
+                <button class="dot ${i === 0 ? 'active' : ''}" data-index="${i}" aria-label="View slide ${i + 1}"></button>`).join('');
         }
 
         bindThumbs();
