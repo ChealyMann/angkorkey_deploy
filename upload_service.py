@@ -109,18 +109,25 @@ def save_image(file, upload_folder, allowed_extensions, resize_to=(800, 800), th
         if img.mode in ("RGBA", "P"):
             img = img.convert("RGB")
 
-        # Save Normal Image
-        img.save(original_path)
+        # Save Normal Image (compressed)
+        save_kwargs = {'optimize': True}
+        if ext.lower() in ('.jpg', '.jpeg'):
+            save_kwargs['quality'] = 82
+        elif ext.lower() == '.webp':
+            save_kwargs['quality'] = 82
+            save_kwargs['method'] = 6
+
+        img.save(original_path, **save_kwargs)
 
         # Create and save Resized Image
         resized = img.copy()
-        resized.thumbnail(resize_to)
-        resized.save(resized_path)
+        resized.thumbnail(resize_to, Image.Resampling.LANCZOS)
+        resized.save(resized_path, **save_kwargs)
 
         # Create and save Thumbnail Image
         thumb = img.copy()
-        thumb.thumbnail(thumb_size)
-        thumb.save(thumb_path)
+        thumb.thumbnail(thumb_size, Image.Resampling.LANCZOS)
+        thumb.save(thumb_path, **save_kwargs)
 
     except Exception as e:
         print(f"CRITICAL UPLOAD ERROR: {e}")
