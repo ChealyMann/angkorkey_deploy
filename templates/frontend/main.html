@@ -81,7 +81,7 @@
 
     <!-- External Scripts & Fonts -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/lucide@0.469.0/dist/umd/lucide.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lucide@0.469.0/dist/umd/lucide.min.js" defer></script>
     <script>
         tailwind.config = {
             darkMode: 'class'
@@ -89,13 +89,23 @@
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com"/>
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin/>
-    <link rel="preconnect" href="https://cdn.tailwindcss.com" crossorigin/>
-    <link rel="preconnect" href="https://flagcdn.com" crossorigin/>
     <link
+        rel="preload"
+        as="style"
         href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:ital,wght@0,300..700;1,300..700&family=Outfit:wght@300;400;500;700;900&display=swap"
-        rel="stylesheet"
     />
+    <link
+        rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:ital,wght@0,300..700;1,300..700&family=Outfit:wght@300;400;500;700;900&display=swap"
+        media="print"
+        onload="this.media='all'"
+    />
+    <noscript>
+        <link
+            rel="stylesheet"
+            href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:ital,wght@0,300..700;1,300..700&family=Outfit:wght@300;400;500;700;900&display=swap"
+        />
+    </noscript>
 
     <!-- ========== CUSTOM STYLES ========== -->
     <style>
