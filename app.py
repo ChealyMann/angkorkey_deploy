@@ -164,6 +164,19 @@ def add_cache_control_headers(response):
         response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0"
         response.headers["Pragma"] = "no-cache"
         response.headers["Expires"] = "0"
+
+    # ---------------------------------------------------------
+    # Auto-invalidate page cache after admin write operations
+    # Any successful POST/PUT/DELETE to /admin/* clears cache
+    # so visitors always see the latest data immediately.
+    # ---------------------------------------------------------
+    if (
+        request.path.startswith("/admin/")
+        and request.method in ("POST", "PUT", "DELETE")
+        and response.status_code in (200, 301, 302)
+    ):
+        cache.clear()
+
     return response
 
 
