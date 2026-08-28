@@ -187,9 +187,12 @@
 .dark .prose-dark {
     color: #d4d4d8;
 }
-.dark .prose-dark h1, .dark .prose-dark h2, .dark .prose-dark h3, .dark .prose-dark strong {
+.dark .prose-dark h1, .dark .prose-dark h2, .dark .prose-dark h3, .dark .prose-dark strong, .dark .prose-dark b {
     color: #ffffff;
 }
+.dark .prose-dark a { color: #60a5fa; }
+.dark .prose-dark blockquote { border-color: #3f3f46; color: #a1a1aa; }
+.dark .prose-dark code { background: #27272a; color: #e4e4e7; }
 .serif { font-family: 'DM Serif Display', serif; }
 
 /* Entrance animations */
@@ -432,14 +435,21 @@
     outline-color: rgba(255, 255, 255, 0.4);
 }
 
-/* Description prose */
+/* Description prose — covers all HTML tags Summernote can generate */
 .prose-dark { color: #374151; line-height: 1.75; font-size: 14px; }
 .prose-dark h1, .prose-dark h2, .prose-dark h3 { color: #111827; margin-top: 1.5rem; margin-bottom: 0.6rem; font-size: 1.15rem; font-weight: 800; letter-spacing: -0.025em; }
-.prose-dark ul { list-style: disc; padding-left: 1.25rem; margin-bottom: 1rem; }
-.prose-dark ul li { margin-bottom: .4rem; }
+.prose-dark ul { list-style: disc !important; padding-left: 1.5rem !important; margin-bottom: 1rem; }
+.prose-dark ol { list-style: decimal !important; padding-left: 1.5rem !important; margin-bottom: 1rem; }
+.prose-dark ul li, .prose-dark ol li { margin-bottom: .4rem; display: list-item !important; }
 .prose-dark p { margin-bottom: 1.25rem; }
 .prose-dark img { border-radius: 16px; width: 100%; margin: 1.5rem 0; }
-.prose-dark strong { color: #111827; font-weight: 700; }
+.prose-dark strong, .prose-dark b { color: #111827; font-weight: 700; }
+.prose-dark em, .prose-dark i { font-style: italic; }
+.prose-dark a { color: #2563eb; text-decoration: underline; }
+.prose-dark blockquote { border-left: 3px solid #e5e7eb; padding-left: 1rem; margin: 1rem 0; color: #6b7280; font-style: italic; }
+.prose-dark code { background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-size: 0.85em; font-family: monospace; }
+.prose-dark pre { background: #1e1e2e; color: #cdd6f4; padding: 1rem; border-radius: 10px; overflow-x: auto; margin-bottom: 1rem; }
+.prose-dark hr { border: none; border-top: 1px solid #e5e7eb; margin: 1.5rem 0; }
 
 
 /* Related product card */
