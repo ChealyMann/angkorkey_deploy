@@ -3,11 +3,29 @@ import json
 from datetime import timedelta
 
 import click
+import redis
 from flask import Flask, render_template, request, redirect, url_for, flash, session, send_from_directory, make_response
 from werkzeug.security import generate_password_hash
 from flask_migrate import Migrate
+from flask_session import Session
 
-from extensions import db, limiter
+from extensions import db, limiter, cache
+
+# ------------------------------------------------------------
+# Redis connection check
+# ------------------------------------------------------------
+REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379")
+
+def _redis_available():
+    """Check if Redis server is reachable."""
+    try:
+        r = redis.from_url(REDIS_URL, socket_connect_timeout=1)
+        r.ping()
+        return True
+    except (redis.ConnectionError, redis.TimeoutError, ConnectionRefusedError):
+        return False
+
+USE_REDIS = _redis_available()
 
 from blueprint.admin.admin import admin_bp
 from blueprint.admin.brand.brand import brand_bp
@@ -58,8 +76,28 @@ app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(minutes=30)
 # Upload folder
 app.config["UPLOAD_FOLDER"] = UPLOAD_DIR
 
-# Safe limiter config for small cPanel hosting
-app.config["RATELIMIT_STORAGE_URI"] = "memory://"
+# ------------------------------------------------------------
+# Redis-backed services (with graceful fallback)
+# ------------------------------------------------------------
+if USE_REDIS:
+    # Rate limiter → Redis DB 0
+    app.config["RATELIMIT_STORAGE_URI"] = f"{REDIS_URL}/0"
+    # Server-side sessions → Redis DB 1
+    app.config["SESSION_TYPE"] = "redis"
+    app.config["SESSION_PERMANENT"] = True
+    app.config["SESSION_REDIS"] = redis.from_url(f"{REDIS_URL}/1")
+    app.config["SESSION_KEY_PREFIX"] = "angkorkey:"
+    # Caching → Redis DB 2
+    app.config["CACHE_TYPE"] = "RedisCache"
+    app.config["CACHE_REDIS_URL"] = f"{REDIS_URL}/2"
+    app.config["CACHE_DEFAULT_TIMEOUT"] = 300  # 5 minutes
+    app.config["CACHE_KEY_PREFIX"] = "angkorkey_cache:"
+else:
+    # Fallback for local development without Redis
+    app.config["RATELIMIT_STORAGE_URI"] = "memory://"
+    app.config["SESSION_TYPE"] = "filesystem"
+    app.config["CACHE_TYPE"] = "SimpleCache"
+    app.config["CACHE_DEFAULT_TIMEOUT"] = 300
 
 # ------------------------------------------------------------
 # Initialize extensions
@@ -67,6 +105,8 @@ app.config["RATELIMIT_STORAGE_URI"] = "memory://"
 db.init_app(app)
 migrate = Migrate(app, db)
 limiter.init_app(app)
+Session(app)
+cache.init_app(app)
 
 # ------------------------------------------------------------
 # Register blueprints
@@ -165,8 +205,8 @@ def loop_marketplace():
     return render_template("loop_marketplace.html")
 
 
-@app.context_processor
-def inject_nav_data():
+def _get_nav_data():
+    """Fetch navigation data (categories, brands, settings). Cached for 5 min."""
     try:
         categories = Category.query.all()
         brands = Brand.query.filter_by(status="true").order_by(Brand.name.asc()).all()
@@ -193,6 +233,11 @@ def inject_nav_data():
         "phone1": phone1,
         "phone2": phone2,
     }
+
+
+@app.context_processor
+def inject_nav_data():
+    return _get_nav_data()
 
 
 @app.cli.command("create-admin")

@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, request, jsonify, url_for, abort
 from sqlalchemy.orm import subqueryload, joinedload, contains_eager
 from sqlalchemy import func, or_, and_
-from extensions import db
+from extensions import db, cache
 
 from models import Category, Product, Promotion, Brand, Setting, Voucher, VoucherRedemption
 from models.ProductVariant import (
@@ -24,6 +24,7 @@ def image_url(filename):
 
 @home_bp.route("/")
 @home_bp.route("/home")
+@cache.cached(timeout=120, key_prefix="view_home")
 def home():
     products = (
         Product.query
@@ -249,6 +250,7 @@ def cart():
 
 
 @home_bp.route("/categories")
+@cache.cached(timeout=300, key_prefix="view_all_categories")
 def all_categories():
     categories = Category.query.filter_by(status="true").all()
 
@@ -537,6 +539,7 @@ def promotions():
     )
 
 @home_bp.route("/brands")
+@cache.cached(timeout=300, key_prefix="view_all_brands")
 def all_brands():
     brands = Brand.query.filter_by(status="true").order_by(Brand.name.asc()).all()
 
