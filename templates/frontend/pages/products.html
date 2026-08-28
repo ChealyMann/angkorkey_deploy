@@ -308,9 +308,10 @@
         function getBrandSkeletonHtml() {
             return `
             <div class="brand-group-block animate-fade-in space-y-6">
-                <div class="flex items-center gap-4 mb-6">
+                <div class="flex items-center gap-2.5 mb-6">
+                    <span class="text-zinc-300 dark:text-zinc-700 font-bold text-lg md:text-xl select-none">|</span>
                     <div class="h-6 w-32 shimmer-effect rounded-none"></div>
-                    <div class="flex-1 h-px bg-zinc-200/60 dark:bg-zinc-800/80"></div>
+                    <span class="text-zinc-300 dark:text-zinc-700 font-bold text-lg md:text-xl select-none">|</span>
                 </div>
                 <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
                     ${Array(5).fill(getSkeletonCardHtml()).join('')}
@@ -533,11 +534,12 @@
 
                         return `
                             <div class="brand-group-block animate-fade-in">
-                                <div class="flex items-center gap-4 mb-6">
-                                    <h2 class="text-lg md:text-xl font-black text-zinc-950 dark:text-white tracking-tight uppercase flex-shrink-0">
+                                <div class="flex items-center gap-2.5 mb-6">
+                                    <span class="text-zinc-400 dark:text-zinc-500 font-bold text-lg md:text-xl select-none">|</span>
+                                    <h2 class="text-lg md:text-xl font-bold text-zinc-950 dark:text-white tracking-wide uppercase">
                                         ${group.brand_name}
                                     </h2>
-                                    <div class="flex-1 h-px bg-zinc-200/80 dark:bg-zinc-800/80"></div>
+                                    <span class="text-zinc-400 dark:text-zinc-500 font-bold text-lg md:text-xl select-none">|</span>
                                 </div>
                                 <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
                                     ${group.products.map(renderProductCard).join('')}
