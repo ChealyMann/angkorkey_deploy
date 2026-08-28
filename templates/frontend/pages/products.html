@@ -65,6 +65,22 @@
             background: rgba(9, 9, 11, 0.72) !important;
         }
 
+        /* Code typing cursor animation */
+        @keyframes codeCursorBlink {
+            0%, 49% { opacity: 1; }
+            50%, 100% { opacity: 0; }
+        }
+
+        .brand-cursor {
+            display: inline-block;
+            width: 2.5px;
+            height: 1.1em;
+            background-color: currentColor;
+            vertical-align: -0.1em;
+            margin: 0 1px;
+            animation: codeCursorBlink 0.75s infinite ease-in-out;
+        }
+
         /* Brand section title line */
         .brand-title-line {
             width: 95px;
@@ -362,6 +378,49 @@
         observeImages();
 
         // ======================================
+        // Code-Style Typing Animation for Brand Headers
+        // Types out the brand name when entering viewport
+        // ======================================
+        const typingObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (!entry.isIntersecting) return;
+
+                const header = entry.target;
+                const fullText = header.getAttribute("data-brand") || "";
+                const textSpan = header.querySelector(".brand-typed-text");
+
+                if (textSpan && fullText) {
+                    textSpan.textContent = "";
+                    let charIndex = 0;
+                    const speed = 40; // ms per letter
+
+                    function typeChar() {
+                        if (charIndex < fullText.length) {
+                            textSpan.textContent += fullText.charAt(charIndex);
+                            charIndex++;
+                            setTimeout(typeChar, speed);
+                        }
+                    }
+                    typeChar();
+                }
+
+                typingObserver.unobserve(header);
+            });
+        }, {
+            threshold: 0.1,
+            rootMargin: "50px"
+        });
+
+        function observeBrandTyping(container = document) {
+            container.querySelectorAll(".brand-typing-header").forEach(header => {
+                typingObserver.observe(header);
+            });
+        }
+
+        // Initialize typing animation on initial page load
+        observeBrandTyping();
+
+        // ======================================
         // Set Active Category Button
         // ======================================
         function setActiveCategoryButton(activeButton) {
@@ -535,9 +594,10 @@
                         return `
                             <div class="brand-group-block animate-fade-in">
                                 <div class="mb-6">
-                                    <h2 class="text-lg md:text-xl font-black text-zinc-950 dark:text-white tracking-wide uppercase inline-flex items-center gap-1.5 select-none">
+                                    <h2 class="brand-typing-header text-lg md:text-xl font-black text-zinc-950 dark:text-white tracking-wide uppercase inline-flex items-center gap-1 select-none font-mono" data-brand="${group.brand_name}">
                                         <span>&lt;</span>
-                                        <span>${group.brand_name}</span>
+                                        <span class="brand-typed-text">${group.brand_name}</span>
+                                        <span class="brand-cursor"></span>
                                         <span>/&gt;</span>
                                     </h2>
                                 </div>
@@ -563,6 +623,7 @@
                 }
 
                 observeImages(productSections);
+                observeBrandTyping(productSections);
 
             } catch (error) {
                 console.error(error);

@@ -3,11 +3,12 @@
         {% for group in brand_groups %}
             {% if group.products and group.products|length > 0 %}
                 <div class="brand-group-block animate-fade-in">
-                    <!-- Brand Header < Brand /> -->
+                    <!-- Brand Header < Brand /> with Typing Animation -->
                     <div class="mb-6">
-                        <h2 class="text-lg md:text-xl font-black text-zinc-950 dark:text-white tracking-wide uppercase inline-flex items-center gap-1.5 select-none">
+                        <h2 class="brand-typing-header text-lg md:text-xl font-black text-zinc-950 dark:text-white tracking-wide uppercase inline-flex items-center gap-1 select-none font-mono" data-brand="{{ group.brand_name }}">
                             <span>&lt;</span>
-                            <span>{{ group.brand_name }}</span>
+                            <span class="brand-typed-text">{{ group.brand_name }}</span>
+                            <span class="brand-cursor"></span>
                             <span>/&gt;</span>
                         </h2>
                     </div>
