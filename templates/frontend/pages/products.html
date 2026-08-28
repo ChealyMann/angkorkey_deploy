@@ -308,18 +308,14 @@
         function getBrandSkeletonHtml() {
             return `
             <div class="brand-group-block animate-fade-in space-y-6">
-                <div class="flex items-end justify-between pb-2 border-b border-gray-100 dark:border-zinc-800/80">
-                    <div class="space-y-2">
-                        <div class="flex items-center gap-3">
-                            <div class="h-6 w-32 shimmer-effect"></div>
-                            <div class="h-4 w-16 shimmer-effect rounded-full"></div>
-                        </div>
-                        <div class="brand-title-line"></div>
-                    </div>
-                    <div class="h-4 w-20 shimmer-effect"></div>
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="w-8 h-8 md:w-9 md:h-9 rounded-lg shimmer-effect flex-shrink-0"></div>
+                    <div class="h-6 w-32 shimmer-effect rounded-none"></div>
+                    <div class="h-4 w-14 shimmer-effect rounded-full"></div>
+                    <div class="flex-1 h-px bg-zinc-200/60 dark:bg-zinc-800/80"></div>
                 </div>
                 <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
-                    ${Array(4).fill(getSkeletonCardHtml()).join('')}
+                    ${Array(5).fill(getSkeletonCardHtml()).join('')}
                 </div>
             </div>
             `;
@@ -538,28 +534,34 @@
                         if (!group.products || group.products.length === 0) return '';
 
                         const countText = group.products.length > 1 ? `{{ _('items') }}` : `{{ _('item') }}`;
-                        const viewAllLink = group.brand_id > 0 ? `
-                            <a href="/brand/${group.brand_id}" class="text-xs font-bold text-zinc-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white transition-colors tracking-widest uppercase flex items-center gap-1 group/link">
-                                {{ _('view_all') }}
-                                <span class="transition-transform group-hover/link:translate-x-0.5">&rarr;</span>
-                            </a>
-                        ` : '';
+                        
+                        let logoHtml = '';
+                        if (group.brand_image && group.brand_image !== 'none.jpg') {
+                            logoHtml = `
+                                <div class="w-8 h-8 md:w-9 md:h-9 rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 p-1 flex items-center justify-center overflow-hidden flex-shrink-0 shadow-xs">
+                                    <img src="/static/images/${group.brand_image}" alt="${group.brand_name}" class="w-full h-full object-contain">
+                                </div>
+                            `;
+                        } else {
+                            const initials = (group.brand_name || 'OT').substring(0, 2).toUpperCase();
+                            logoHtml = `
+                                <div class="w-8 h-8 md:w-9 md:h-9 rounded-lg bg-zinc-100 dark:bg-zinc-850 border border-zinc-200/80 dark:border-zinc-800 flex items-center justify-center flex-shrink-0">
+                                    <span class="text-xs font-black text-zinc-600 dark:text-zinc-400 uppercase">${initials}</span>
+                                </div>
+                            `;
+                        }
 
                         return `
                             <div class="brand-group-block animate-fade-in">
-                                <div class="flex items-end justify-between mb-6 pb-2 border-b border-gray-100 dark:border-zinc-800/80">
-                                    <div>
-                                        <div class="flex items-center gap-3">
-                                            <h2 class="text-xl md:text-2xl font-black text-gray-900 dark:text-white tracking-tight uppercase">
-                                                ${group.brand_name}
-                                            </h2>
-                                            <span class="px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 rounded-full border border-gray-200/50 dark:border-zinc-700/50">
-                                                ${group.products.length} ${countText}
-                                            </span>
-                                        </div>
-                                        <div class="brand-title-line mt-2"></div>
-                                    </div>
-                                    ${viewAllLink}
+                                <div class="flex items-center gap-3 mb-6">
+                                    ${logoHtml}
+                                    <h2 class="text-lg md:text-xl font-black text-zinc-900 dark:text-white tracking-tight uppercase">
+                                        ${group.brand_name}
+                                    </h2>
+                                    <span class="text-[10px] font-mono font-medium px-2.5 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-850 text-zinc-600 dark:text-zinc-400 border border-zinc-200/60 dark:border-zinc-700/60 flex-shrink-0">
+                                        ${group.products.length} ${countText}
+                                    </span>
+                                    <div class="flex-1 h-px bg-gradient-to-r from-zinc-200 dark:from-zinc-800 via-zinc-200/40 dark:via-zinc-800/40 to-transparent"></div>
                                 </div>
                                 <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
                                     ${group.products.map(renderProductCard).join('')}
@@ -569,7 +571,7 @@
                     }).join('');
 
                     productSections.innerHTML = `
-                        <div class="space-y-12" id="brandGroupSections">
+                        <div class="space-y-14 md:space-y-16" id="brandGroupSections">
                             ${brandBlocksHtml}
                         </div>
                     `;

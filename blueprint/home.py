@@ -347,11 +347,13 @@ def products(category_id=None):
     for product in products_list:
         brand_name = product.brand.name if product.brand else "Other"
         brand_id = product.brand.id if product.brand else 0
+        brand_image = product.brand.image if (product.brand and product.brand.image and product.brand.image != "none.jpg") else None
 
         if brand_id not in brand_groups_map:
             brand_groups_map[brand_id] = {
                 "brand_id": brand_id,
                 "brand_name": brand_name,
+                "brand_image": brand_image,
                 "products": []
             }
 
@@ -387,6 +389,7 @@ def products(category_id=None):
             serialized_brand_groups.append({
                 "brand_id": group["brand_id"],
                 "brand_name": group["brand_name"],
+                "brand_image": group.get("brand_image"),
                 "products": serialized_products
             })
 
