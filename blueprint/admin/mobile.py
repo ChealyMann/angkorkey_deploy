@@ -91,7 +91,7 @@ def dashboard():
 @mobile_bp.route("/product")
 def product_list():
     output = []
-    _products = Product.query.all()
+    _products = Product.query.order_by(Product.id.desc()).all()
     for _product in _products:
         output.append({
             "id": _product.id,

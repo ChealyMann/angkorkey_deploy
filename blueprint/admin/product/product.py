@@ -105,8 +105,8 @@ def product():
     # keep this for pagination/footer if you still want it
     products = getAllProduct()
 
-    # Vue search will use this full product list
-    _products = Product.query.all()
+    # Vue search will use this full product list (ordered newest first)
+    _products = Product.query.order_by(Product.id.desc()).all()
 
     for _product in _products:
         output.append({
