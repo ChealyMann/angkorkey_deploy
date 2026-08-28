@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, jsonify, url_for, abort
 from sqlalchemy.orm import subqueryload, joinedload, contains_eager
-from sqlalchemy import func, or_, and_
+from sqlalchemy import func, or_, and_, case
 from extensions import db, cache
 
 from models import Category, Product, Promotion, Brand, Setting, Voucher, VoucherRedemption
@@ -271,8 +271,6 @@ def products(category_id=None):
         Category.query.filter_by(id=category_id, status="true").first_or_404()
 
     is_ajax = request.args.get("ajax", type=int)
-    page = request.args.get("page", 1, type=int)
-    per_page = 12
 
     # ------------------------------------------------------------
     # Get lowest active variant price for each product
@@ -290,9 +288,6 @@ def products(category_id=None):
     )
 
     # Final sorting price
-    # Priority:
-    # 1. lowest active variant price
-    # 2. normal product price
     sort_price = func.coalesce(lowest_variant_price, Product.price)
 
     query = (
@@ -314,38 +309,43 @@ def products(category_id=None):
 
     # ------------------------------------------------------------
     # Dynamic Sorting Logic
+    # Brands are ordered alphabetically (A-Z, unbranded 'Other' last)
+    # Products within each brand are ordered by user's chosen sort
     # ------------------------------------------------------------
     sort_by = request.args.get("sort", "featured").strip().lower()
 
+    brand_order = [
+        case((Brand.name.is_(None), 1), else_=0),
+        Brand.name.asc()
+    ]
+
     if sort_by == "price_asc":
-        query = query.order_by(sort_price.asc(), Product.id.desc())
+        inner_order = [sort_price.asc(), Product.id.desc()]
     elif sort_by == "price_desc":
-        query = query.order_by(sort_price.desc(), Product.id.desc())
+        inner_order = [sort_price.desc(), Product.id.desc()]
     elif sort_by == "newest":
-        query = query.order_by(Product.id.desc())
-    else:  # 'featured' default grouping by brand
-        query = query.outerjoin(Brand, Product.brand_id == Brand.id).order_by(
+        inner_order = [Product.id.desc()]
+    else:  # 'featured' default
+        inner_order = [
             Product.best_selling.desc(),
-            Brand.name.asc().nullslast(),
             sort_price.asc(),
             Product.id.desc()
-        )
+        ]
 
-    pagination = query.paginate(
-        page=page,
-        per_page=per_page,
-        error_out=False
+    products_list = (
+        query
+        .outerjoin(Brand, Product.brand_id == Brand.id)
+        .order_by(*(brand_order + inner_order))
+        .all()
     )
 
-    products_list = pagination.items
-
     # ------------------------------------------------------------
-    # Build brand groups for Jinja
+    # Build brand groups for Jinja and JSON
     # ------------------------------------------------------------
     brand_groups_map = {}
 
     for product in products_list:
-        brand_name = product.brand.name if product.brand else "No Brand"
+        brand_name = product.brand.name if product.brand else "Other"
         brand_id = product.brand.id if product.brand else 0
 
         if brand_id not in brand_groups_map:
@@ -360,36 +360,39 @@ def products(category_id=None):
     brand_groups = list(brand_groups_map.values())
 
     if is_ajax:
-        serialized_products = []
-        for product in products_list:
-            has_discount = bool(product.has_discount)
-            discount_pct = 0
-            price_val = product.promotion_min_price if getattr(product, 'discounted_variants', False) else product.price
-            old_price_val = product.promotion_min_old_price if getattr(product, 'discounted_variants', False) else product.old_price
-            if has_discount and old_price_val and float(old_price_val) > float(price_val):
-                discount_pct = int(round(((float(old_price_val) - float(price_val)) / float(old_price_val)) * 100))
+        serialized_brand_groups = []
+        for group in brand_groups:
+            serialized_products = []
+            for product in group["products"]:
+                has_discount = bool(product.has_discount)
+                discount_pct = 0
+                price_val = product.promotion_min_price if getattr(product, 'discounted_variants', False) else product.price
+                old_price_val = product.promotion_min_old_price if getattr(product, 'discounted_variants', False) else product.old_price
+                if has_discount and old_price_val and float(old_price_val) > float(price_val):
+                    discount_pct = int(round(((float(old_price_val) - float(price_val)) / float(old_price_val)) * 100))
 
-            serialized_products.append({
-                "id": product.id,
-                "name": product.name,
-                "image": product.image,
-                "best_selling": bool(product.best_selling),
-                "has_discount": has_discount,
-                "discount_pct": discount_pct,
-                "price": float(product.price),
-                "price_text": product.price_text or f"${product.price:.2f}",
-                "promotion_old_price_text": product.promotion_old_price_text,
-                "promotion_price_text": product.promotion_price_text
+                serialized_products.append({
+                    "id": product.id,
+                    "name": product.name,
+                    "image": product.image,
+                    "best_selling": bool(product.best_selling),
+                    "has_discount": has_discount,
+                    "discount_pct": discount_pct,
+                    "price": float(product.price),
+                    "price_text": product.price_text or f"${product.price:.2f}",
+                    "promotion_old_price_text": product.promotion_old_price_text,
+                    "promotion_price_text": product.promotion_price_text
+                })
+
+            serialized_brand_groups.append({
+                "brand_id": group["brand_id"],
+                "brand_name": group["brand_name"],
+                "products": serialized_products
             })
 
         response = jsonify({
-            "products": serialized_products,
-            "has_next": pagination.has_next,
-            "page": pagination.page,
-            "next_page": pagination.next_num if pagination.has_next else None,
-            "product_count": len(products_list),
-            "total": pagination.total,
-            "pages": pagination.pages
+            "brand_groups": serialized_brand_groups,
+            "product_count": len(products_list)
         })
         
         response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
@@ -403,7 +406,6 @@ def products(category_id=None):
         brand_groups=brand_groups,
         categories=categories,
         current_category=category_id,
-        pagination=pagination,
         sort_by=sort_by
     )
 

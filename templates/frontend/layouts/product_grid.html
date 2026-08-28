@@ -1,4 +1,41 @@
-{% if products %}
+{% if brand_groups and brand_groups|length > 0 %}
+    <div class="space-y-12" id="brandGroupSections">
+        {% for group in brand_groups %}
+            {% if group.products and group.products|length > 0 %}
+                <div class="brand-group-block animate-fade-in">
+                    <!-- Brand Section Header -->
+                    <div class="flex items-end justify-between mb-6 pb-2 border-b border-gray-100 dark:border-zinc-800/80">
+                        <div>
+                            <div class="flex items-center gap-3">
+                                <h2 class="text-xl md:text-2xl font-black text-gray-900 dark:text-white tracking-tight uppercase">
+                                    {{ group.brand_name }}
+                                </h2>
+                                <span class="px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 rounded-full border border-gray-200/50 dark:border-zinc-700/50">
+                                    {{ group.products|length }} {{ _('items') if group.products|length > 1 else _('item') }}
+                                </span>
+                            </div>
+                            <div class="brand-title-line mt-2"></div>
+                        </div>
+                        {% if group.brand_id and group.brand_id > 0 %}
+                            <a href="{{ url_for('home.brand_products', brand_id=group.brand_id) }}" class="text-xs font-bold text-zinc-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white transition-colors tracking-widest uppercase flex items-center gap-1 group/link">
+                                {{ _('view_all') }}
+                                <span class="transition-transform group-hover/link:translate-x-0.5">&rarr;</span>
+                            </a>
+                        {% endif %}
+                    </div>
+
+                    <!-- Products Grid -->
+                    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
+                        {% for product in group.products %}
+                            {% include 'frontend/layouts/product_card.html' %}
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
+        {% endfor %}
+    </div>
+{% elif products and products|length > 0 %}
+    <!-- Fallback if flat products list is provided without brand groups -->
     <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6" id="flatProductsGrid">
         {% for product in products %}
             {% include 'frontend/layouts/product_card.html' %}

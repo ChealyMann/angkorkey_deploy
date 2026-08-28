@@ -258,21 +258,12 @@
             >
                 {% include 'frontend/layouts/product_grid.html' %}
             </div>
-
-            <!-- ====================================== -->
-            <!-- INFINITE SCROLL TRIGGER -->
-            <!-- Used to detect bottom scroll and load more products -->
-            <!-- ====================================== -->
-            <div
-                    id="infiniteScrollTrigger"
-                    class="flex justify-center items-center w-full mt-2 py-0 lg:py-8 opacity-0 transition-opacity duration-300"
-            ></div>
         </div>
     </div>
 
     <!-- ====================================== -->
     <!-- PRODUCTS PAGE JAVASCRIPT -->
-    <!-- Search, category filter, AJAX loading, infinite scroll -->
+    <!-- Search, category filter, sorting, AJAX loading -->
     <!-- ====================================== -->
     <script>
         (function() {
@@ -280,16 +271,12 @@
         // Global State Variables
         // ======================================
         let currentCategory = {{ current_category|tojson }};
-        let currentPage = 1;
-        let hasNext = {{ pagination.has_next|tojson }};
         let isLoading = false;
         let searchTimeout = null;
-        let loadedProductCount = {{ products|length }};
 
         // ======================================
         // DOM Elements
         // ======================================
-        const trigger = document.getElementById("infiniteScrollTrigger");
         const productSections = document.getElementById("productSections");
         const searchInput = document.getElementById("searchInput");
         const sortSelect = document.getElementById("sortSelect");
@@ -316,12 +303,30 @@
         }
 
         // ======================================
-        // IntersectionObserver — lazy image loader
+        // Dynamic Brand Skeleton HTML Generator
         // ======================================
-        // Images in product_card.html use data-src instead of src.
-        // The observer watches each img; when it scrolls within
-        // 300 px of the viewport it swaps data-src → src, waits for
-        // load, then fades the image in and removes the skeleton.
+        function getBrandSkeletonHtml() {
+            return `
+            <div class="brand-group-block animate-fade-in space-y-6">
+                <div class="flex items-end justify-between pb-2 border-b border-gray-100 dark:border-zinc-800/80">
+                    <div class="space-y-2">
+                        <div class="flex items-center gap-3">
+                            <div class="h-6 w-32 shimmer-effect"></div>
+                            <div class="h-4 w-16 shimmer-effect rounded-full"></div>
+                        </div>
+                        <div class="brand-title-line"></div>
+                    </div>
+                    <div class="h-4 w-20 shimmer-effect"></div>
+                </div>
+                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
+                    ${Array(4).fill(getSkeletonCardHtml()).join('')}
+                </div>
+            </div>
+            `;
+        }
+
+        // ======================================
+        // IntersectionObserver — lazy image loader
         // ======================================
         const imageObserver = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
@@ -339,7 +344,6 @@
                     };
 
                     img.onerror = () => {
-                        // Still reveal on error so the alt text shows
                         img.classList.add("loaded");
                     };
 
@@ -347,12 +351,11 @@
                 }
             });
         }, {
-            rootMargin: "300px"  // load 300 px before entering viewport
+            rootMargin: "300px"
         });
 
         // ======================================
         // Observe all [data-src] images inside a container
-        // Called after initial render and after every AJAX inject
         // ======================================
         function observeImages(container = document) {
             container.querySelectorAll("img[data-src]").forEach(img => {
@@ -360,59 +363,11 @@
             });
         }
 
-        // Observe images already on the page from server-side render
+        // Observe initial server-rendered images
         observeImages();
 
         // ======================================
-        // Bottom Loading Spinner HTML
-        // Used when infinite scroll loads more products
-        // ======================================
-        function bottomSpinnerHtml() {
-            return `
-            <div class="flex justify-center items-center w-full">
-                <dotlottie-player
-                    src="{{ url_for('static', filename='assets/Preloader.lottie') }}"
-                    background="transparent"
-                    speed="1"
-                    style="width: 48px; height: 48px;"
-                    loop
-                    autoplay>
-                </dotlottie-player>
-            </div>
-        `;
-        }
-
-        // ======================================
-        // Hide Infinite Scroll Trigger
-        // ======================================
-        function hideTrigger() {
-            trigger.innerHTML = "";
-            trigger.classList.add("opacity-0");
-        }
-
-        // ======================================
-        // Show Bottom Spinner
-        // ======================================
-        function showBottomSpinner() {
-            trigger.innerHTML = bottomSpinnerHtml();
-            trigger.classList.remove("opacity-0");
-        }
-
-        // ======================================
-        // Show No More Products Message
-        // ======================================
-        function showNoMoreProducts() {
-            trigger.innerHTML = `
-            <span class="text-zinc-500 text-sm font-medium">
-                No more products to load
-            </span>
-        `;
-            trigger.classList.remove("opacity-0");
-        }
-
-        // ======================================
         // Set Active Category Button
-        // Reset all buttons, then highlight the clicked one
         // ======================================
         function setActiveCategoryButton(activeButton) {
             document.querySelectorAll(".category-btn").forEach((btn) => {
@@ -425,31 +380,10 @@
         }
 
         // ======================================
-        // Infinite Scroll Listener
-        // Loads more products when user scrolls near bottom
-        // ======================================
-        const scrollHandler = () => {
-            if (!document.getElementById("infiniteScrollTrigger")) {
-                window.removeEventListener("scroll", scrollHandler);
-                return;
-            }
-            if (isLoading || !hasNext) return;
-
-            const rect = trigger.getBoundingClientRect();
-
-            if (rect.top <= window.innerHeight + 250) {
-                loadProducts(true);
-            }
-        };
-        window.addEventListener("scroll", scrollHandler);
-
-        // ======================================
-        // Search Input Debounce
-        // Waits 400ms after typing before searching
+        // Search Input Debounce (400ms)
         // ======================================
         searchInput.addEventListener("input", () => {
             clearTimeout(searchTimeout);
-
             searchTimeout = setTimeout(() => {
                 resetAndLoad();
             }, 400);
@@ -463,13 +397,11 @@
 
         // ======================================
         // Category Filtering
-        // Updates selected category and reloads products
         // ======================================
         function filterCategory(catId, btnElement) {
             currentCategory = catId;
             setActiveCategoryButton(btnElement);
 
-            // Center selected category button inside horizontal scroll container
             if (btnElement && typeof btnElement.scrollIntoView === "function") {
                 btnElement.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
             }
@@ -478,66 +410,42 @@
         }
 
         // ======================================
-        // Reset Products & Reload
-        // Used when searching or changing category
+        // Reset & Reload
         // ======================================
         function resetAndLoad() {
-            currentPage = 1;
-            hasNext = true;
-            loadedProductCount = 0;
-            hideTrigger();
-
             const container = document.getElementById("filtersContainer");
-
             if (container) {
                 const y = container.getBoundingClientRect().top + window.pageYOffset - 100;
-
                 window.scrollTo({
                     top: y,
                     behavior: "smooth"
                 });
             }
 
-            loadProducts(false);
+            loadProducts();
         }
 
         // ======================================
-        // ======================================
         // AJAX Product Loader
-        // isAppend = true  → load next page (infinite scroll)
-        // isAppend = false → replace current products (search/filter)
         // ======================================
-        async function loadProducts(isAppend = false) {
+        async function loadProducts() {
             if (isLoading) return;
-
             isLoading = true;
 
-            // ======================================
-            // Show Correct Loader
-            // ======================================
-            if (isAppend) {
-                showBottomSpinner();
-            } else {
-                // Generate 8 skeleton cards in responsive grid layout matching real card grid
-                const skeletonGrid = `
-                    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6 animate-fade-in">
-                        ${Array(8).fill(getSkeletonCardHtml()).join('')}
-                    </div>
-                `;
-                productSections.innerHTML = skeletonGrid;
-                productSections.style.opacity = "1";
-                hideTrigger();
-            }
+            // Show brand-grouped skeleton loaders
+            productSections.innerHTML = `
+                <div class="space-y-12">
+                    ${getBrandSkeletonHtml()}
+                    ${getBrandSkeletonHtml()}
+                </div>
+            `;
+            productSections.style.opacity = "1";
 
             try {
-                // ======================================
-                // Build Request URL
-                // ======================================
                 const query = searchInput.value.trim();
-                const requestPage = isAppend ? currentPage + 1 : 1;
                 const sortVal = sortSelect ? sortSelect.value : "featured";
 
-                let url = `{{ url_for('home.products') }}?ajax=1&page=${requestPage}`;
+                let url = `{{ url_for('home.products') }}?ajax=1`;
 
                 if (query) {
                     url += `&search=${encodeURIComponent(query)}`;
@@ -551,9 +459,6 @@
                     url += `&sort=${sortVal}`;
                 }
 
-                // ======================================
-                // Fetch Products From Backend
-                // ======================================
                 const response = await fetch(url);
 
                 if (!response.ok) {
@@ -561,11 +466,10 @@
                 }
 
                 const data = await response.json();
+                const brandGroups = data.brand_groups || [];
+                const totalCount = Number(data.product_count || 0);
 
-                const products = data.products || [];
-                const productCount = Number(data.product_count || 0);
-
-                // Helper to render product card (1-to-1 match with product_card.html)
+                // Helper to render product card
                 const renderProductCard = (product) => {
                     const detailUrl = `/product_detail/${product.id}`;
                     const imageUrl = product.image ? `/static/images/resized_${product.image}` : 'https://via.placeholder.com/500x500?text=No+Image';
@@ -628,86 +532,69 @@
                     `;
                 };
 
-                // ======================================
-                // Render Products
-                // ======================================
-                if (isAppend) {
-                    if (productCount > 0) {
-                        const grid = productSections.querySelector("#flatProductsGrid");
-                        if (grid) {
-                            const cardsHtml = products.map(renderProductCard).join('');
-                            grid.insertAdjacentHTML("beforeend", cardsHtml);
-                            observeImages(grid);
-                        }
-                        loadedProductCount += productCount;
-                    }
-                } else {
-                    if (productCount > 0) {
-                        productSections.innerHTML = `
-                            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6" id="flatProductsGrid">
-                                ${products.map(renderProductCard).join('')}
+                // Render Brand-Grouped Layout
+                if (totalCount > 0 && brandGroups.length > 0) {
+                    const brandBlocksHtml = brandGroups.map(group => {
+                        if (!group.products || group.products.length === 0) return '';
+
+                        const countText = group.products.length > 1 ? `{{ _('items') }}` : `{{ _('item') }}`;
+                        const viewAllLink = group.brand_id > 0 ? `
+                            <a href="/brand/${group.brand_id}" class="text-xs font-bold text-zinc-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white transition-colors tracking-widest uppercase flex items-center gap-1 group/link">
+                                {{ _('view_all') }}
+                                <span class="transition-transform group-hover/link:translate-x-0.5">&rarr;</span>
+                            </a>
+                        ` : '';
+
+                        return `
+                            <div class="brand-group-block animate-fade-in">
+                                <div class="flex items-end justify-between mb-6 pb-2 border-b border-gray-100 dark:border-zinc-800/80">
+                                    <div>
+                                        <div class="flex items-center gap-3">
+                                            <h2 class="text-xl md:text-2xl font-black text-gray-900 dark:text-white tracking-tight uppercase">
+                                                ${group.brand_name}
+                                            </h2>
+                                            <span class="px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 rounded-full border border-gray-200/50 dark:border-zinc-700/50">
+                                                ${group.products.length} ${countText}
+                                            </span>
+                                        </div>
+                                        <div class="brand-title-line mt-2"></div>
+                                    </div>
+                                    ${viewAllLink}
+                                </div>
+                                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
+                                    ${group.products.map(renderProductCard).join('')}
+                                </div>
                             </div>
                         `;
-                    } else {
-                        const noProductsText = `{{ _('no_products') }}`;
-                        productSections.innerHTML = `
-                            <div class="text-center py-20 border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 mt-8 rounded-none animate-fade-in" id="emptyProductsGrid">
-                                <p class="text-zinc-550 text-sm font-bold uppercase tracking-widest">${noProductsText}</p>
-                            </div>
-                        `;
-                    }
-                    loadedProductCount = productCount;
-                    observeImages(productSections);
-                }
+                    }).join('');
 
-                // ======================================
-                // Update Pagination State
-                // ======================================
-                currentPage = Number(data.page || requestPage);
-                hasNext = Boolean(data.has_next);
-
-                // ======================================
-                // Update Bottom Trigger Message
-                // ======================================
-                if (loadedProductCount === 0) {
-                    hideTrigger();
-                } else if (isAppend && !hasNext) {
-                    showNoMoreProducts();
-                } else {
-                    hideTrigger();
-                }
-
-            } catch (error) {
-                // ======================================
-                // Error Handling
-                // ======================================
-                console.error(error);
-
-                if (!isAppend) {
                     productSections.innerHTML = `
-                        <div class="text-center py-20 border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 mt-8 rounded-none">
-                            <p class="text-zinc-500 text-sm font-bold uppercase tracking-widest mb-4">Failed to load products.</p>
-                            <button onclick="resetAndLoad()" class="border border-zinc-300 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 px-6 py-2.5 rounded-none text-xs font-bold uppercase tracking-widest hover:bg-zinc-950 dark:hover:bg-zinc-50 hover:text-white dark:hover:text-zinc-950 transition-colors">Retry Fetch</button>
+                        <div class="space-y-12" id="brandGroupSections">
+                            ${brandBlocksHtml}
                         </div>
                     `;
                 } else {
-                    trigger.innerHTML = `
-                    <span class="text-red-400 text-sm font-medium">
-                        Failed to load products
-                    </span>
+                    const noProductsText = `{{ _('no_products') }}`;
+                    productSections.innerHTML = `
+                        <div class="text-center py-20 border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 mt-8 rounded-none animate-fade-in" id="emptyProductsGrid">
+                            <p class="text-zinc-550 text-sm font-bold uppercase tracking-widest">${noProductsText}</p>
+                        </div>
+                    `;
+                }
+
+                observeImages(productSections);
+
+            } catch (error) {
+                console.error(error);
+                productSections.innerHTML = `
+                    <div class="text-center py-20 border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 mt-8 rounded-none">
+                        <p class="text-zinc-500 text-sm font-bold uppercase tracking-widest mb-4">Failed to load products.</p>
+                        <button onclick="resetAndLoad()" class="border border-zinc-300 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 px-6 py-2.5 rounded-none text-xs font-bold uppercase tracking-widest hover:bg-zinc-950 dark:hover:bg-zinc-50 hover:text-white dark:hover:text-zinc-950 transition-colors cursor-pointer">Retry Fetch</button>
+                    </div>
                 `;
-                    trigger.classList.remove("opacity-0");
-                }
-
             } finally {
-                // ======================================
-                // Cleanup Loader State
-                // ======================================
                 isLoading = false;
-
-                if (!isAppend) {
-                    productSections.style.opacity = "1";
-                }
+                productSections.style.opacity = "1";
             }
         }
 
@@ -741,7 +628,6 @@
             };
             window.addEventListener("resize", resizeHandler);
             
-            // Check overflow state once layout loads
             setTimeout(updateFadeIndicator, 300);
         }
 
