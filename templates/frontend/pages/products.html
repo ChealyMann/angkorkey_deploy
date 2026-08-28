@@ -379,36 +379,59 @@
 
         // ======================================
         // Code-Style Typing Animation for Brand Headers
-        // Types out the brand name when entering viewport
+        // Types out the brand name with a comfortable cadence and loops every 5s
         // ======================================
+        function startBrandTypingLoop(header) {
+            if (header.dataset.typingActive === "true") return;
+            header.dataset.typingActive = "true";
+
+            const fullText = header.getAttribute("data-brand") || "";
+            const textSpan = header.querySelector(".brand-typed-text");
+            if (!textSpan || !fullText) return;
+
+            let charIndex = 0;
+            let isDeleting = false;
+            const typeSpeed = 95;      // Slightly slower, natural typing speed (95ms)
+            const deleteSpeed = 45;    // Snappy backspacing (45ms)
+            const holdDuration = 5000; // Hold completed brand name for 5 seconds
+
+            function step() {
+                if (!document.body.contains(header)) return;
+
+                if (!isDeleting) {
+                    if (charIndex < fullText.length) {
+                        textSpan.textContent += fullText.charAt(charIndex);
+                        charIndex++;
+                        setTimeout(step, typeSpeed);
+                    } else {
+                        isDeleting = true;
+                        setTimeout(step, holdDuration);
+                    }
+                } else {
+                    if (charIndex > 0) {
+                        textSpan.textContent = fullText.substring(0, charIndex - 1);
+                        charIndex--;
+                        setTimeout(step, deleteSpeed);
+                    } else {
+                        isDeleting = false;
+                        setTimeout(step, 400); // Brief pause before re-typing
+                    }
+                }
+            }
+
+            textSpan.textContent = "";
+            step();
+        }
+
         const typingObserver = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
                 if (!entry.isIntersecting) return;
-
-                const header = entry.target;
-                const fullText = header.getAttribute("data-brand") || "";
-                const textSpan = header.querySelector(".brand-typed-text");
-
-                if (textSpan && fullText) {
-                    textSpan.textContent = "";
-                    let charIndex = 0;
-                    const speed = 40; // ms per letter
-
-                    function typeChar() {
-                        if (charIndex < fullText.length) {
-                            textSpan.textContent += fullText.charAt(charIndex);
-                            charIndex++;
-                            setTimeout(typeChar, speed);
-                        }
-                    }
-                    typeChar();
-                }
-
-                typingObserver.unobserve(header);
+                startBrandTypingLoop(entry.target);
+                typingObserver.unobserve(entry.target);
             });
         }, {
             threshold: 0.1,
-            rootMargin: "50px"
+            rootMargin: "80px"
         });
 
         function observeBrandTyping(container = document) {
