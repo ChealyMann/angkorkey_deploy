@@ -4,12 +4,12 @@
             {% if group.products and group.products|length > 0 %}
                 <div class="brand-group-block animate-fade-in">
                     <!-- Brand Header < Brand /> -->
-                    <div class="flex items-center gap-1.5 mb-6">
-                        <span class="text-zinc-400 dark:text-zinc-500 font-mono text-lg md:text-xl select-none">&lt;</span>
-                        <h2 class="text-lg md:text-xl font-black text-zinc-950 dark:text-white tracking-wide uppercase">
-                            {{ group.brand_name }}
+                    <div class="mb-6">
+                        <h2 class="text-lg md:text-xl font-black text-zinc-950 dark:text-white tracking-wide uppercase inline-flex items-center gap-1.5 select-none">
+                            <span>&lt;</span>
+                            <span>{{ group.brand_name }}</span>
+                            <span>/&gt;</span>
                         </h2>
-                        <span class="text-zinc-400 dark:text-zinc-500 font-mono text-lg md:text-xl select-none">/&gt;</span>
                     </div>
 
                     <!-- Products Grid -->
