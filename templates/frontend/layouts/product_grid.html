@@ -1,29 +1,14 @@
 {% if brand_groups and brand_groups|length > 0 %}
-    <div class="space-y-14 md:space-y-16" id="brandGroupSections">
+    <div class="space-y-12 md:space-y-14" id="brandGroupSections">
         {% for group in brand_groups %}
             {% if group.products and group.products|length > 0 %}
                 <div class="brand-group-block animate-fade-in">
-                    <!-- Modern Brand Header -->
-                    <div class="flex items-center gap-3 mb-6">
-                        {% if group.brand_image %}
-                            <div class="w-8 h-8 md:w-9 md:h-9 rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 p-1 flex items-center justify-center overflow-hidden flex-shrink-0 shadow-xs">
-                                <img src="{{ url_for('static', filename='images/' + group.brand_image) }}" alt="{{ group.brand_name }}" class="w-full h-full object-contain">
-                            </div>
-                        {% else %}
-                            <div class="w-8 h-8 md:w-9 md:h-9 rounded-lg bg-zinc-100 dark:bg-zinc-850 border border-zinc-200/80 dark:border-zinc-800 flex items-center justify-center flex-shrink-0">
-                                <span class="text-xs font-black text-zinc-600 dark:text-zinc-400 uppercase">{{ group.brand_name[:2] }}</span>
-                            </div>
-                        {% endif %}
-
-                        <h2 class="text-lg md:text-xl font-black text-zinc-900 dark:text-white tracking-tight uppercase">
+                    <!-- Clean & Neat Modern Brand Header -->
+                    <div class="flex items-center gap-4 mb-6">
+                        <h2 class="text-lg md:text-xl font-black text-zinc-950 dark:text-white tracking-tight uppercase flex-shrink-0">
                             {{ group.brand_name }}
                         </h2>
-
-                        <span class="text-[10px] font-mono font-medium px-2.5 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-850 text-zinc-600 dark:text-zinc-400 border border-zinc-200/60 dark:border-zinc-700/60 flex-shrink-0">
-                            {{ group.products|length }} {{ _('items') if group.products|length > 1 else _('item') }}
-                        </span>
-
-                        <div class="flex-1 h-px bg-gradient-to-r from-zinc-200 dark:from-zinc-800 via-zinc-200/40 dark:via-zinc-800/40 to-transparent"></div>
+                        <div class="flex-1 h-px bg-zinc-200/80 dark:bg-zinc-800/80"></div>
                     </div>
 
                     <!-- Products Grid -->
