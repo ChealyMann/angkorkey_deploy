@@ -65,11 +65,13 @@
                             <i class="h-4 w-4 bg-transparent group-hover:rotate-180 transition-transform duration-300" data-lucide="chevron-down"></i>
                         </a>
 
-                        <ul class="dropdown-menu absolute hidden group-hover:block bg-white dark:bg-zinc-900 shadow-xl rounded-xl w-56 p-2 z-50 origin-top top-full mt-0 border border-gray-100 dark:border-zinc-800">
+                        <ul class="dropdown-menu absolute hidden group-hover:block bg-white dark:bg-zinc-900 shadow-xl rounded-xl w-auto min-w-[14rem] max-w-[30rem] p-2 z-50 origin-top top-full mt-0 border border-gray-100 dark:border-zinc-800 max-h-[400px] overflow-y-auto"
+                            style="scrollbar-width: thin;">
+                            <div class="grid grid-cols-1 {% if categories|length > 8 %}sm:grid-cols-2{% endif %} gap-0.5">
                             {% for category in categories %}
                             <li>
                                 <a href="{{ url_for('home.products', category_id=category.id) }}"
-                                   class="block px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-zinc-650 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 hover:text-zinc-950 dark:hover:text-white rounded-lg transition-colors">
+                                   class="block px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-zinc-650 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 hover:text-zinc-950 dark:hover:text-white rounded-lg transition-colors whitespace-nowrap">
                                     {{ category.name }}
                                 </a>
                             </li>
@@ -80,6 +82,7 @@
                                 </span>
                             </li>
                             {% endfor %}
+                            </div>
                         </ul>
                     </li>
 
@@ -92,11 +95,13 @@
                             <i class="h-4 w-4 bg-transparent group-hover:rotate-180 transition-transform duration-300" data-lucide="chevron-down"></i>
                         </a>
 
-                        <ul class="dropdown-menu absolute hidden group-hover:block bg-white dark:bg-zinc-900 shadow-xl rounded-xl w-56 p-2 z-50 origin-top top-full mt-0 border border-gray-100 dark:border-zinc-800">
+                        <ul class="dropdown-menu absolute hidden group-hover:block bg-white dark:bg-zinc-900 shadow-xl rounded-xl w-auto min-w-[14rem] max-w-[30rem] p-2 z-50 origin-top top-full mt-0 border border-gray-100 dark:border-zinc-800 max-h-[400px] overflow-y-auto"
+                            style="scrollbar-width: thin;">
+                            <div class="grid grid-cols-1 {% if brands|length > 8 %}sm:grid-cols-2{% endif %} gap-0.5">
                             {% for brand in brands %}
                             <li>
                                 <a href="{{ url_for('home.brand_products', brand_id=brand.id) }}"
-                                   class="block px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-zinc-650 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 hover:text-zinc-950 dark:hover:text-white rounded-lg transition-colors">
+                                   class="block px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-zinc-650 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 hover:text-zinc-950 dark:hover:text-white rounded-lg transition-colors whitespace-nowrap">
                                     {{ brand.name }}
                                 </a>
                             </li>
@@ -107,6 +112,7 @@
                                 </span>
                             </li>
                             {% endfor %}
+                            </div>
                         </ul>
                     </li>
 
