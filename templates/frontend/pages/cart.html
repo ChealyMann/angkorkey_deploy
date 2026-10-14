@@ -352,6 +352,7 @@
         let appliedVoucherCode = null;
         let appliedVoucherMinSpend = 0.0;
         let voucherRequestSeq = 0;
+        const RESUME_KEY = 'angkorkey_resume_checkout';  // reopen checkout after a Login Widget reload
 
         // Translated text for `key` in the current language, or '' if missing.
         function t(key) {
@@ -676,6 +677,8 @@
         }
 
         function hideCheckoutModal() {
+            // Closing checkout abandons a pending sign-in: don't reopen it on a later visit.
+            try { sessionStorage.removeItem(RESUME_KEY); } catch (e) { /* storage blocked */ }
             checkoutModalOverlay.classList.add('opacity-0');
             const box = document.getElementById('checkout-modal-box');
             box.classList.remove('translate-y-0', 'sm:scale-100', 'opacity-100');
@@ -968,7 +971,6 @@
             });
         }
 
-        const RESUME_KEY = 'angkorkey_resume_checkout';
         const checkoutBtnLabel = document.getElementById('checkout-btn-label');
         let placing = false;
 
@@ -1171,6 +1173,7 @@
             if (!saved || cart.length === 0) return;
             const radio = document.querySelector(`input[name="delivery_option"][value="${saved.delivery === 'grab' ? 'grab' : 'standard'}"]`);
             if (radio) radio.checked = true;
+            updateDeliveryUI();
             showCheckoutModal();
             goToStep(2);
             if (saved.voucher && voucherInput) {

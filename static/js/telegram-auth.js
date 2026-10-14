@@ -74,6 +74,9 @@
         if (!isMiniApp()) {
             return me().then(function (data) { return data.signed_in === true; });
         }
+        // Only a success is remembered. After a failure (network blip, or initData older than
+        // 24h because the Mini App stayed open) an existing cookie may still be valid, and the
+        // next user action (e.g. "Place order") retries once. Never retried automatically.
         if (!webAppSignIn) {
             api.lastError = null;
             webAppSignIn = postJSON('/auth/telegram/webapp', { init_data: webApp().initData })
@@ -87,6 +90,17 @@
                 .catch(function () {
                     api.lastError = 'sign_in_failed';
                     return false;
+                })
+                .then(function (ok) {
+                    if (ok) return true;
+                    return me().then(function (data) {
+                        if (data.signed_in === true) {
+                            api.lastError = null;
+                            return true;
+                        }
+                        webAppSignIn = null;  // let the next call try again
+                        return false;
+                    });
                 });
         }
         return webAppSignIn;

@@ -209,3 +209,16 @@ def test_telegram_auth_script_is_served(client):
     assert response.status_code == 200
     for name in ("isMiniApp", "ensureSignedIn", "requestWriteAccessIfNeeded", "onWidgetAuth"):
         assert name in body
+    # A failed Mini App sign-in is not memoised: it falls back to /api/me and clears the memo.
+    assert "webAppSignIn = null" in body and "/api/me" in body
+
+
+def test_layout_busts_service_worker_cache_for_auth_script(client):
+    # sw.js serves /static/ cache-first forever, so the script URL must change with the file.
+    assert "js/telegram-auth.js?v=2" in html_of(client.get("/cart"))
+
+
+def test_closing_checkout_clears_resume_flag(client):
+    html = html_of(client.get("/cart"))
+    hide = html[html.index("function hideCheckoutModal()"):]
+    assert "sessionStorage.removeItem(RESUME_KEY)" in hide[:400]
