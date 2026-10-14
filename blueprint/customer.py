@@ -5,6 +5,7 @@ from flask import Blueprint, jsonify, make_response, request, session
 from extensions import db
 from models import Customer
 from services.customer_session import (
+    customer_auth_enabled,
     clear_customer_cookie,
     current_customer,
     issue_customer_cookie,
@@ -50,6 +51,10 @@ def _valid_id(tg_user) -> bool:
             and not isinstance(tg_user["id"], bool))
 
 
+def _auth_unavailable():
+    return jsonify({"ok": False, "error": "auth_unavailable"}), 503
+
+
 def _sign_in_response(tg_user, can_message):
     if not _valid_id(tg_user):
         return jsonify({"ok": False}), 401
@@ -69,6 +74,8 @@ def _sign_in_response(tg_user, can_message):
 @customer_bp.route('/auth/telegram/webapp', methods=['POST'])
 def telegram_webapp_login():
     require_same_origin()
+    if not customer_auth_enabled():
+        return _auth_unavailable()
     init_data = _json_body().get("init_data")
     if not isinstance(init_data, str):
         return jsonify({"ok": False}), 401
@@ -82,6 +89,8 @@ def telegram_webapp_login():
 @customer_bp.route('/auth/telegram/widget', methods=['POST'])
 def telegram_widget_login():
     require_same_origin()
+    if not customer_auth_enabled():
+        return _auth_unavailable()
     body = _json_body()
     data = {k: body[k] for k in WIDGET_KEYS if k in body}
     tg_user = verify_login_widget(data, get_bot_token())

@@ -62,9 +62,11 @@ def test_webapp_login_bad_bodies_are_401(client, bot_token):
 
 def test_login_without_bot_token_is_401(client, monkeypatch):
     monkeypatch.delenv("TELEGRAM_BOT_TOKEN", raising=False)
-    r = client.post("/auth/telegram/webapp", json={"init_data": signed_init_data("123:ABC")},
+    # Signed with the empty key: must not be accepted when no token is configured.
+    r = client.post("/auth/telegram/webapp", json={"init_data": signed_init_data("")},
                     headers=ORIGIN)
     assert r.status_code == 401
+    assert Customer.query.count() == 0
 
 
 def test_bot_token_falls_back_to_setting(app, monkeypatch):
@@ -270,3 +272,52 @@ def test_old_cookie_of_deleted_customer_is_not_refreshed(client):
     r = client.get("/api/me")
     assert r.json == {"signed_in": False}
     assert "Set-Cookie" not in r.headers
+
+
+def test_placeholder_secret_key_disables_customer_auth(app, client, bot_token, make_customer):
+    from services.customer_session import PLACEHOLDER_SECRET_KEY
+
+    customer = make_customer()
+    valid_cookie = _aged_token(customer.id, 60)
+    assert app.config["SECRET_KEY"] == PLACEHOLDER_SECRET_KEY  # test env uses the fallback
+    app.config["TESTING"] = False
+    try:
+        client.set_cookie("ak_customer", valid_cookie)
+        assert client.get("/api/me").json == {"signed_in": False}
+        body = {"init_data": signed_init_data(bot_token)}
+        r = client.post("/auth/telegram/webapp", json=body, headers=ORIGIN)
+        assert r.status_code == 503 and r.json == {"ok": False, "error": "auth_unavailable"}
+        fields = {"id": "77", "first_name": "Dara", "auth_date": str(int(time.time()))}
+        r = client.post("/auth/telegram/widget", json=sign_widget(fields, bot_token),
+                        headers=ORIGIN)
+        assert r.status_code == 503
+    finally:
+        app.config["TESTING"] = True
+    assert Customer.query.count() == 1  # only the fixture customer
+    assert client.get("/api/me").json["signed_in"] is True  # same cookie valid again
+
+
+def test_real_secret_key_keeps_auth_enabled_outside_testing(app, client, make_customer):
+    customer = make_customer()
+    app.config["SECRET_KEY"] = "a-real-secret"
+    app.config["TESTING"] = False
+    try:
+        client.set_cookie("ak_customer", _aged_token(customer.id, 60))
+        assert client.get("/api/me").json["signed_in"] is True
+    finally:
+        app.config["SECRET_KEY"] = "change-this-secret-key-now"
+        app.config["TESTING"] = True
+
+
+def test_public_host_origin_accepted_behind_proxy(client, bot_token):
+    body = {"init_data": signed_init_data(bot_token)}
+    proxied = {"base_url": "http://127.0.0.1:5000"}
+    r = client.post("/auth/telegram/webapp", json=body,
+                    headers={"Origin": "https://angkorkey.store"}, **proxied)
+    assert r.status_code == 200
+    r = client.post("/auth/telegram/webapp", json=body,
+                    headers={"Referer": "https://www.angkorkey.store/cart"}, **proxied)
+    assert r.status_code == 200
+    for evil in ("https://evil.example", "https://angkorkey.store.evil.example"):
+        r = client.post("/auth/telegram/webapp", json=body, headers={"Origin": evil}, **proxied)
+        assert r.status_code == 403

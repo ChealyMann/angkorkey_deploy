@@ -10,6 +10,22 @@ from models import Customer
 COOKIE_NAME = "ak_customer"
 MAX_AGE = 30 * 24 * 3600
 REFRESH_AFTER = 24 * 3600  # re-issue tokens older than one day
+PLACEHOLDER_SECRET_KEY = "change-this-secret-key-now"  # app.py's fallback when SECRET_KEY is unset
+
+_warned_placeholder_key = False
+
+
+def customer_auth_enabled() -> bool:
+    """False when cookies would be signed with the public placeholder key (forgeable)."""
+    global _warned_placeholder_key
+    if current_app.testing or current_app.config["SECRET_KEY"] != PLACEHOLDER_SECRET_KEY:
+        return True
+    if not _warned_placeholder_key:
+        _warned_placeholder_key = True
+        current_app.logger.warning(
+            "Customer sign-in disabled: SECRET_KEY is the placeholder value. Set SECRET_KEY."
+        )
+    return False
 
 
 def _serializer():
@@ -62,7 +78,7 @@ def current_customer():
     if "customer" in g:
         return g.customer
     customer = None
-    token = _read_token()
+    token = _read_token() if customer_auth_enabled() else None
     if token:
         customer = db.session.get(Customer, token[0])
         g.customer_token_issued_at = token[1]

@@ -69,6 +69,13 @@ app.config["SECRET_KEY"] = os.environ.get(
     "change-this-secret-key-now"
 )
 
+# Hostnames accepted by require_same_origin() besides request.host (behind a proxy).
+app.config["PUBLIC_HOSTS"] = tuple(
+    h.strip().lower()
+    for h in os.environ.get("PUBLIC_HOSTS", "angkorkey.store,www.angkorkey.store").split(",")
+    if h.strip()
+)
+
 app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL", "sqlite:///" + os.path.join(INSTANCE_DIR, "app.db"))
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
