@@ -121,8 +121,10 @@ def notify_customer_status(order) -> str | None:
     order_id = order.id
     username = str(Setting.get_val("telegram_username", DEFAULT_TELEGRAM_USERNAME)
                    or DEFAULT_TELEGRAM_USERNAME).strip().lstrip("@")
+    # "My orders" opens as a Mini App (web_app) so it gets initData and the shop's cookie; a plain
+    # url button would open Telegram's in-app browser, where the customer is signed out.
     keyboard = {"inline_keyboard": [[
-        {"text": _copy(lang, "bot_btn_my_orders"), "url": f"{SITE_URL}/my-orders"},
+        {"text": _copy(lang, "bot_btn_my_orders"), "web_app": {"url": f"{SITE_URL}/my-orders"}},
         {"text": _copy(lang, "bot_btn_chat"), "url": f"https://t.me/{username}"},
     ]]}
     error = send_message(customer.telegram_id, _copy(lang, key).format(id=order_id), keyboard)

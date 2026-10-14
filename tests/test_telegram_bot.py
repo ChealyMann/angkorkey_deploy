@@ -137,10 +137,20 @@ def test_customer_message_content_and_keyboard(requests, order_factory, make_cus
     body = requests[0]["body"]
     assert body["chat_id"] == 5 and f"#{order.id}" in body["text"]
     buttons = [b for row in body["reply_markup"]["inline_keyboard"] for b in row]
-    assert [(b["text"], b["url"]) for b in buttons] == [
-        ("My orders", "https://angkorkey.store/my-orders"),
-        ("Chat with us", "https://t.me/MyShop"),
+    # "My orders" is a Mini App button (signed in there); "Chat with us" stays a plain link.
+    assert buttons == [
+        {"text": "My orders", "web_app": {"url": "https://angkorkey.store/my-orders"}},
+        {"text": "Chat with us", "url": "https://t.me/MyShop"},
     ]
+
+
+def test_admin_message_has_no_web_app_button(requests, order_factory):
+    Setting.set_val("telegram_admin_chat_id", "777")
+    order = order_factory()
+    notify_admin_new_order(order)
+    body = requests[0]["body"]
+    assert "reply_markup" not in body
+    assert f"https://angkorkey.store/admin/mobile/orders/{order.id}" in body["text"]
 
 
 def test_customer_message_uses_order_received_copy_for_new(requests, order_factory, make_customer):
