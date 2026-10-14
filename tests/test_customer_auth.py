@@ -321,3 +321,23 @@ def test_public_host_origin_accepted_behind_proxy(client, bot_token):
     for evil in ("https://evil.example", "https://angkorkey.store.evil.example"):
         r = client.post("/auth/telegram/webapp", json=body, headers={"Origin": evil}, **proxied)
         assert r.status_code == 403
+
+
+def test_auth_routes_and_me_are_exempt_from_default_rate_limit(client):
+    from extensions import limiter
+
+    limiter.reset()
+    limiter.enabled = True
+    try:
+        me_codes = {client.get("/api/me").status_code for _ in range(65)}
+        webapp_codes = {client.post("/auth/telegram/webapp", json={}, headers=ORIGIN).status_code
+                        for _ in range(65)}
+        widget_codes = {client.post("/auth/telegram/widget", json={}, headers=ORIGIN).status_code
+                        for _ in range(65)}
+        # Control: an ordinary route still gets the default 60 per minute.
+        control = [client.get("/my-orders").status_code for _ in range(61)]
+    finally:
+        limiter.enabled = False
+        limiter.reset()
+    assert 429 not in me_codes | webapp_codes | widget_codes
+    assert control[-1] == 429

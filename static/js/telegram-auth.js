@@ -1,8 +1,9 @@
 /*
  * AngkorAuth: customer sign-in with Telegram.
  *
- * - Inside the Telegram Mini App, initData is posted to /auth/telegram/webapp once
- *   per page load (silently, on load) and the result is remembered.
+ * - Inside the Telegram Mini App, the page checks /api/me on load and, only if the
+ *   customer is not signed in yet, posts initData to /auth/telegram/webapp (silently).
+ *   A success is remembered for the page.
  * - In a normal browser, the Login Widget (templates/frontend/pages/sign_in.html)
  *   calls AngkorAuth.onWidgetAuth(user), which posts to /auth/telegram/widget.
  *
@@ -70,26 +71,36 @@
             });
     }
 
+    /* POST the Mini App's initData; resolves true when the server signed the customer in. */
+    function postInitData() {
+        return postJSON('/auth/telegram/webapp', { init_data: webApp().initData })
+            .then(function (response) {
+                return readJSON(response).then(function (data) {
+                    if (response.ok && data.ok === true) return true;
+                    api.lastError = data.error || 'sign_in_failed';
+                    return false;
+                });
+            })
+            .catch(function () {
+                api.lastError = 'sign_in_failed';
+                return false;
+            });
+    }
+
     function ensureSignedIn() {
         if (!isMiniApp()) {
             return me().then(function (data) { return data.signed_in === true; });
         }
+        // A valid cookie is checked first (GET /api/me), so initData is only posted (a database
+        // write) when the customer is not signed in yet.
         // Only a success is remembered. After a failure (network blip, or initData older than
         // 24h because the Mini App stayed open) an existing cookie may still be valid, and the
         // next user action (e.g. "Place order") retries once. Never retried automatically.
         if (!webAppSignIn) {
             api.lastError = null;
-            webAppSignIn = postJSON('/auth/telegram/webapp', { init_data: webApp().initData })
-                .then(function (response) {
-                    return readJSON(response).then(function (data) {
-                        if (response.ok && data.ok === true) return true;
-                        api.lastError = data.error || 'sign_in_failed';
-                        return false;
-                    });
-                })
-                .catch(function () {
-                    api.lastError = 'sign_in_failed';
-                    return false;
+            webAppSignIn = me()
+                .then(function (data) {
+                    return data.signed_in === true ? true : postInitData();
                 })
                 .then(function (ok) {
                     if (ok) return true;

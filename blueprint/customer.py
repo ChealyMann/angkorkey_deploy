@@ -91,7 +91,10 @@ def _sign_in_response(tg_user, can_message):
     return response
 
 
+# The sign-in routes and /api/me are exempt from the default per-IP limit: they are cheap or
+# HMAC-verified, and behind the proxy every customer can share one address.
 @customer_bp.route('/auth/telegram/webapp', methods=['POST'])
+@limiter.exempt
 def telegram_webapp_login():
     require_same_origin()
     if not customer_auth_enabled():
@@ -107,6 +110,7 @@ def telegram_webapp_login():
 
 
 @customer_bp.route('/auth/telegram/widget', methods=['POST'])
+@limiter.exempt
 def telegram_widget_login():
     require_same_origin()
     if not customer_auth_enabled():
@@ -127,6 +131,7 @@ def customer_logout():
 
 
 @customer_bp.route('/api/me')
+@limiter.exempt
 def me():
     customer = current_customer()
     if customer is None:
