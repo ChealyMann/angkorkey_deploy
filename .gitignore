@@ -68,3 +68,6 @@ logs/
 scratch/
 tmp/
 copykeyz
+
+# Superpowers brainstorm mockups
+.superpowers/
