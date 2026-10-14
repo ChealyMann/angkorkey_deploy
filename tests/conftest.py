@@ -113,3 +113,28 @@ def make_customer(app):
         return customer
 
     return _make
+
+
+@pytest.fixture
+def bot_token(monkeypatch):
+    token = "123:ABC"
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", token)
+    return token
+
+
+@pytest.fixture
+def login_as(app, client):
+    """Sign a customer in by setting a real, signed ak_customer cookie on `client`."""
+    from flask import make_response
+
+    from services.customer_session import COOKIE_NAME, issue_customer_cookie
+
+    def _login(customer):
+        with app.test_request_context("/"):
+            response = make_response("")
+            issue_customer_cookie(response, customer.id)
+            cookie = response.headers["Set-Cookie"].split(";", 1)[0]
+        client.set_cookie(COOKIE_NAME, cookie.split("=", 1)[1])
+        return customer
+
+    return _login

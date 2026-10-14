@@ -1,9 +1,8 @@
-import hashlib
-import hmac
 import json
 from urllib.parse import urlencode
 
 from services.telegram_auth import verify_login_widget, verify_webapp_init_data
+from tests.helpers import sign_webapp, sign_widget
 
 NOW = 1_800_000_000
 FIELDS = {
@@ -11,22 +10,6 @@ FIELDS = {
     "user": json.dumps({"id": 42, "first_name": "Sokha", "allows_write_to_pm": True}),
     "auth_date": str(NOW - 60),
 }
-
-
-def sign_webapp(fields: dict, token: str) -> str:
-    """Build a Mini App initData query string signed the way Telegram does."""
-    check = "\n".join(f"{k}={v}" for k, v in sorted(fields.items()))
-    secret = hmac.new(b"WebAppData", token.encode(), hashlib.sha256).digest()
-    digest = hmac.new(secret, check.encode(), hashlib.sha256).hexdigest()
-    return urlencode(dict(fields, hash=digest))
-
-
-def sign_widget(fields: dict, token: str) -> dict:
-    """Return Login Widget data with a valid hash added."""
-    check = "\n".join(f"{k}={v}" for k, v in sorted(fields.items()) if v is not None)
-    secret = hashlib.sha256(token.encode()).digest()
-    digest = hmac.new(secret, check.encode(), hashlib.sha256).hexdigest()
-    return dict(fields, hash=digest)
 
 
 def test_verify_webapp_accepts_valid():
