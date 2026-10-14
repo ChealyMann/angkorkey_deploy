@@ -68,7 +68,7 @@ app.config["SECRET_KEY"] = os.environ.get(
     "change-this-secret-key-now"
 )
 
-app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///" + os.path.join(INSTANCE_DIR, "app.db")
+app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL", "sqlite:///" + os.path.join(INSTANCE_DIR, "app.db"))
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(minutes=30)
