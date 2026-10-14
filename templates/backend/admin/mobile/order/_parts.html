@@ -1,0 +1,94 @@
+{# Shared pieces for the orders screens. Admin forms are plain POST forms (no CSRF token), like the other mobile admin pages; the server checks the request origin. #}
+
+{% macro flashes() %}
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% for category, message in messages %}
+<div class="ord-flash {{ 'ord-flash-ok' if category == 'success' else 'ord-flash-bad' }}" role="alert">{{ message }}</div>
+{% endfor %}
+{% endwith %}
+{% endmacro %}
+
+{% macro action_buttons(card) %}
+{% set o = card.order %}
+<div class="ord-actions">
+    {% if card.next_status %}
+    <form method="post" action="{{ url_for('admin_orders.advance', order_id=o.id) }}">
+        <input type="hidden" name="to_status" value="{{ card.next_status }}">
+        <button type="submit" class="ord-btn ord-btn-primary">{{ card.next_label }} →</button>
+    </form>
+    {% endif %}
+    <a class="ord-btn" href="{{ card.telegram_link }}" target="_blank" rel="noopener">💬 Telegram</a>
+    {% if o.status != 'cancelled' %}
+    {% if o.status == 'delivered' %}
+        {% set confirm_text = 'Order #' ~ o.id ~ ' is already delivered. Cancel it anyway? The customer will be told it was cancelled.' %}
+    {% else %}
+        {% set confirm_text = 'Cancel order #' ~ o.id ~ '? The customer will be told.' %}
+    {% endif %}
+    <form method="post" action="{{ url_for('admin_orders.advance', order_id=o.id) }}" onsubmit="return confirm({{ confirm_text|tojson|forceescape }});">
+        <input type="hidden" name="to_status" value="cancelled">
+        <button type="submit" class="ord-btn ord-btn-danger">Cancel</button>
+    </form>
+    {% endif %}
+</div>
+{% endmacro %}
+
+{% macro styles() %}
+<style>
+    .ord-title { font-size: 1rem; font-weight: 700; color: var(--text-main); margin: 0; }
+    .ord-sub { font-size: 0.6875rem; color: var(--text-muted); }
+    .ord-range { display: flex; gap: 4px; }
+    .ord-chip {
+        display: inline-block; padding: 4px 10px; font-size: 0.6875rem; font-weight: 600; white-space: nowrap;
+        color: var(--text-main); background: var(--bg-card); border: 1px solid var(--border-light);
+        border-radius: 999px; text-decoration: none;
+    }
+    .ord-chip.active { background: var(--accent-black); color: var(--bg-card); border-color: var(--accent-black); }
+    .ord-chip.attn { background: rgba(239, 68, 68, 0.08); border-color: rgba(239, 68, 68, 0.35); color: #dc2626; }
+    .ord-chip.attn.active { background: #dc2626; border-color: #dc2626; color: #fff; }
+    .ord-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 12px 0 8px; }
+    .ord-stat { background: var(--bg-card); border: 1px solid var(--border-light); border-radius: 12px; padding: 10px 6px; text-align: center; }
+    .ord-stat b { display: block; font-size: 1.25rem; line-height: 1.2; color: var(--text-main); }
+    .ord-stat span { font-size: 0.6875rem; color: var(--text-muted); }
+    .ord-stat.profit { background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.35); }
+    .ord-tabs { display: flex; gap: 6px; overflow-x: auto; padding: 2px 0 10px; -webkit-overflow-scrolling: touch; }
+    .order-card {
+        background: var(--bg-card); border: 1px solid var(--border-light); border-radius: 12px;
+        padding: 12px; margin-bottom: 10px;
+    }
+    .order-card .head { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+    .order-card .head a { color: var(--text-main); font-weight: 700; text-decoration: none; }
+    .order-card .total { font-weight: 700; color: var(--text-main); }
+    .order-card .meta { font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; }
+    .order-card .reasons { margin: 8px 0 0; padding: 0; list-style: none; font-size: 0.75rem; color: #dc2626; }
+    .order-card .notify-warn { color: #d97706; margin-left: 4px; cursor: help; }
+    .ord-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+    .ord-actions form { margin: 0; }
+    .ord-btn {
+        display: inline-flex; align-items: center; justify-content: center; min-height: 40px; padding: 0 14px;
+        font-size: 0.8125rem; font-weight: 600; color: var(--text-main); background: var(--bg-card);
+        border: 1px solid var(--border-light); border-radius: 8px; text-decoration: none; cursor: pointer;
+    }
+    .ord-btn-primary { background: var(--accent-black); border-color: var(--accent-black); color: var(--bg-card); }
+    .ord-btn-danger { color: #dc2626; border-color: rgba(239, 68, 68, 0.35); }
+    .ord-empty { text-align: center; padding: 32px 0; font-size: 0.75rem; color: var(--text-muted); }
+    .ord-pager { display: flex; justify-content: space-between; align-items: center; margin: 12px 0; font-size: 0.75rem; color: var(--text-muted); }
+    .ord-flash { padding: 10px 12px; border-radius: 10px; font-size: 0.8125rem; margin-bottom: 10px; }
+    .ord-flash-ok { background: rgba(16, 185, 129, 0.12); color: #047857; border: 1px solid rgba(16, 185, 129, 0.35); }
+    .ord-flash-bad { background: rgba(239, 68, 68, 0.1); color: #dc2626; border: 1px solid rgba(239, 68, 68, 0.35); }
+    .ord-warn { padding: 10px 12px; border-radius: 10px; font-size: 0.8125rem; margin-bottom: 10px; background: rgba(245, 158, 11, 0.12); color: #b45309; border: 1px solid rgba(245, 158, 11, 0.4); }
+    .ord-section { background: var(--bg-card); border: 1px solid var(--border-light); border-radius: 12px; padding: 12px; margin-bottom: 12px; }
+    .ord-section h6 { font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); font-weight: 700; margin-bottom: 10px; }
+    .ord-row { display: flex; justify-content: space-between; gap: 12px; font-size: 0.8125rem; padding: 3px 0; color: var(--text-main); }
+    .ord-row span:first-child { color: var(--text-muted); }
+    .ord-row.strong { font-weight: 700; border-top: 1px solid var(--border-light); margin-top: 4px; padding-top: 8px; }
+    .ord-item { display: flex; justify-content: space-between; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border-light); font-size: 0.8125rem; color: var(--text-main); }
+    .ord-item:last-of-type { border-bottom: 0; }
+    .ord-item small { display: block; color: var(--text-muted); }
+    .ord-item .nocost { color: #dc2626; }
+    .ord-form { display: flex; gap: 8px; align-items: stretch; }
+    .ord-form .keyz-input { flex: 1; min-width: 0; }
+    .ord-timeline { list-style: none; margin: 0; padding: 0; font-size: 0.8125rem; color: var(--text-main); }
+    .ord-timeline li { display: flex; justify-content: space-between; padding: 4px 0; }
+    .ord-timeline li span:last-child { color: var(--text-muted); }
+</style>
+{% endmacro %}

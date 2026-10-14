@@ -32,6 +32,21 @@ def _refuse_unless_temp_db():
 _refuse_unless_temp_db()
 
 
+@pytest.fixture(autouse=True)
+def no_real_telegram(monkeypatch):
+    """Never reach the real Telegram API: no env token by default, and urlopen is blocked.
+
+    Tests that need a token use `bot_token`; tests that need urlopen patch it themselves.
+    """
+    import urllib.request
+
+    def _blocked(*args, **kwargs):
+        raise AssertionError("real network call")
+
+    monkeypatch.delenv("TELEGRAM_BOT_TOKEN", raising=False)
+    monkeypatch.setattr(urllib.request, "urlopen", _blocked)
+
+
 @pytest.fixture
 def app():
     flask_app.config["TESTING"] = True
@@ -49,6 +64,20 @@ def app():
 @pytest.fixture
 def client(app):
     return app.test_client()
+
+
+@pytest.fixture
+def admin_client(app):
+    """A test client signed in as an admin (session user_id)."""
+    from models import User
+
+    user = User(username="tester", password="x")
+    db.session.add(user)
+    db.session.commit()
+    client = app.test_client()
+    with client.session_transaction() as sess:
+        sess["user_id"] = user.id
+    return client
 
 
 @pytest.fixture

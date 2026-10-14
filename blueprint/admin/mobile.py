@@ -1,3 +1,4 @@
+import math
 import os
 import re
 from werkzeug.security import generate_password_hash
@@ -20,6 +21,7 @@ from form.BrandForm import BrandForm, BrandFormEdit
 from form.PromotionForm import PromotionForm, PromotionFormEdit
 from form.UserForm import UserForm, UserFormEdit
 from form.VoucherForm import VoucherForm
+from services.orders import standard_delivery_fee
 from upload_service import save_image
 from Webp import save_picture
 
@@ -1044,6 +1046,17 @@ def settings():
         telegram_bot_token = request.form.get("telegram_bot_token", "").strip()
         telegram_chat_id = request.form.get("telegram_chat_id", "").strip()
         telegram_caption_template = request.form.get("telegram_caption_template", "").strip()
+        telegram_admin_chat_id = request.form.get("telegram_admin_chat_id", "").strip()
+        fee_text = request.form.get("standard_delivery_fee")  # None: field not on the form, leave as is
+        standard_fee = None
+        if fee_text is not None:
+            try:
+                standard_fee = float(fee_text.strip())
+                if not math.isfinite(standard_fee) or standard_fee < 0:
+                    raise ValueError
+            except ValueError:
+                flash("Standard delivery fee must be a number that is 0 or more. Nothing was saved.", "error")
+                return redirect(url_for("mobile.settings"))
 
         if telegram_username.startswith("@"):
             telegram_username = telegram_username[1:]
@@ -1056,6 +1069,9 @@ def settings():
         Setting.set_val("telegram_bot_token", telegram_bot_token)
         Setting.set_val("telegram_chat_id", telegram_chat_id)
         Setting.set_val("telegram_caption_template", telegram_caption_template)
+        Setting.set_val("telegram_admin_chat_id", telegram_admin_chat_id)
+        if standard_fee is not None:
+            Setting.set_val("standard_delivery_fee", f"{standard_fee:.2f}")
 
         flash("Settings updated successfully.", "success")
         return redirect(url_for("mobile.settings"))
@@ -1082,4 +1098,6 @@ def settings():
         telegram_bot_token=Setting.get_val("telegram_bot_token", ""),
         telegram_chat_id=Setting.get_val("telegram_chat_id", ""),
         telegram_caption_template=Setting.get_val("telegram_caption_template", default_template),
+        telegram_admin_chat_id=Setting.get_val("telegram_admin_chat_id", ""),
+        standard_delivery_fee=f"{standard_delivery_fee():.2f}",
     )

@@ -46,8 +46,27 @@
             </div>
         </div>
 
+        <div class="card p-3 mb-4">
+            <h6 class="text-muted text-uppercase fw-bold font-11 mb-3">3. Orders</h6>
+
+            <div class="mb-3">
+                <label class="keyz-label">Admin Telegram Chat ID</label>
+                <input type="text" name="telegram_admin_chat_id" class="form-control keyz-input" placeholder="e.g. 123456789" inputmode="numeric" value="{{ telegram_admin_chat_id }}">
+                <span class="text-muted font-10 mt-1 d-block">New-order alerts are sent here. Open your bot in Telegram and press Start first. Save before testing.</span>
+                <button type="submit" form="test-message-form" class="btn btn-outline-dark btn-sm mt-2" style="border-radius: 8px; font-weight: 500;">
+                    <i class="fa-solid fa-paper-plane me-1"></i> Send test message
+                </button>
+            </div>
+
+            <div class="mb-3">
+                <label class="keyz-label">Standard Delivery Fee ($)</label>
+                <input type="number" name="standard_delivery_fee" class="form-control keyz-input" step="0.01" min="0" inputmode="decimal" required value="{{ standard_delivery_fee }}">
+                <span class="text-muted font-10 mt-1 d-block">Charged on Standard delivery. Vouchers make it free for the customer.</span>
+            </div>
+        </div>
+
         <div class="card p-3 mb-5">
-            <h6 class="text-muted text-uppercase fw-bold font-11 mb-3">3. Telegram Channel Autopost</h6>
+            <h6 class="text-muted text-uppercase fw-bold font-11 mb-3">4. Telegram Channel Autopost</h6>
             
             <div class="mb-3">
                 <label class="keyz-label">Telegram Bot Token</label>
@@ -75,6 +94,7 @@
             </button>
         </div>
     </form>
+    <form id="test-message-form" action="{{ url_for('admin_orders.test_message') }}" method="POST"></form>
 </div>
 
 {% with messages = get_flashed_messages(with_categories=true) %}

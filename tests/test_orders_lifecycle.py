@@ -10,6 +10,8 @@ from services.orders import (
     range_bounds, set_cash_received, set_grab_fee, summary,
 )
 
+_REAL_NOTIFY_CUSTOMER = telegram_bot.notify_customer_status
+
 
 @pytest.fixture(autouse=True)
 def sent(monkeypatch):
@@ -82,6 +84,25 @@ def test_notify_exception_is_recorded_not_raised(order_factory, monkeypatch):
     advance_status(o, "confirmed")
     assert db.session.get(Order, o.id).status == "confirmed"
     assert db.session.get(Order, o.id).notify_error == "network down"
+
+
+def test_successful_notification_round_clears_old_notify_error(order_factory):
+    o = order_factory(status="new")
+    o.notify_error = "forbidden"
+    db.session.commit()
+    advance_status(o, "confirmed")  # the autouse `sent` fixture makes the customer send succeed
+    assert db.session.get(Order, o.id).notify_error is None
+
+
+def test_skipped_customer_notification_also_clears_notify_error(order_factory, make_customer, monkeypatch):
+    # The real sender, which skips (returns None) when can_message is False.
+    monkeypatch.setattr(telegram_bot, "notify_customer_status", _REAL_NOTIFY_CUSTOMER)
+    customer = make_customer(telegram_id=4242, can_message=False)
+    o = order_factory(customer=customer, status="new")
+    o.notify_error = "no_admin_chat"
+    db.session.commit()
+    advance_status(o, "confirmed")
+    assert db.session.get(Order, o.id).notify_error is None
 
 
 def test_profit_with_and_without_voucher(order_factory):

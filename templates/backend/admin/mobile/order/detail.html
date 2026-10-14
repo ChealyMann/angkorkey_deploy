@@ -1,0 +1,113 @@
+{% extends 'backend/admin/mobile/mobile_master.html' %}
+{% from 'backend/admin/mobile/order/_parts.html' import flashes, action_buttons, styles %}
+
+{% block page_title %}Order #{{ order.id }} · {{ config['title'] }}{% endblock %}
+
+{% block main %}
+{{ styles() }}
+<div class="mb-4">
+    {{ flashes() }}
+
+    <a class="ord-sub" href="{{ url_for('admin_orders.order_list') }}">← All orders</a>
+    <div class="d-flex justify-content-between align-items-center mt-1 mb-2">
+        <h3 class="ord-title">Order #{{ order.id }}</h3>
+        <span class="ord-chip active">{{ status_labels[order.status] }}</span>
+    </div>
+
+    {% if order.notify_error %}
+    <div class="ord-warn">Telegram message failed: {{ order.notify_error }}</div>
+    {% endif %}
+    {% if card.reasons %}
+    <div class="ord-flash ord-flash-bad">
+        <b>Needs a look</b>
+        <ul class="mb-0 ps-3">{% for reason in card.reasons %}<li>{{ reason }}</li>{% endfor %}</ul>
+    </div>
+    {% endif %}
+
+    {{ action_buttons(card) }}
+
+    <div class="ord-section mt-3">
+        <h6>Items</h6>
+        {% for item in order.items %}
+        <div class="ord-item">
+            <div>
+                {{ item.name }}{% if item.options_text %}<small>{{ item.options_text }}</small>{% endif %}
+                <small>
+                    {{ item.unit_price|order_money }} each ·
+                    {% if item.unit_cost is none %}<span class="nocost">no cost price</span>{% else %}cost {{ item.unit_cost|order_money }}{% endif %}
+                </small>
+            </div>
+            <div class="text-end">× {{ item.quantity }}<small>{{ ((item.unit_price or 0) * (item.quantity or 0))|order_money }}</small></div>
+        </div>
+        {% endfor %}
+        <div class="ord-row strong"><span>Subtotal</span><span>{{ order.subtotal|order_money }}</span></div>
+        <div class="ord-row"><span>Delivery charged{% if order.voucher_code %} (voucher {{ order.voucher_code }}){% endif %}</span><span>{% if order.delivery_fee_charged is none %}—{% else %}{{ order.delivery_fee_charged|order_money }}{% endif %}</span></div>
+        <div class="ord-row"><span>Total to collect</span><span>{{ order.total_to_collect|order_money }}</span></div>
+    </div>
+
+    <div class="ord-section">
+        <h6>Money</h6>
+        <div class="ord-row"><span>Item cost</span><span>{{ order.total_cost|order_money }}</span></div>
+        <div class="ord-row"><span>Driver fee</span><span>{% if order.delivery_fee_driver is none %}—{% else %}{{ order.delivery_fee_driver|order_money }}{% endif %}</span></div>
+        <div class="ord-row strong"><span>Profit</span><span>{{ card.profit|order_money }}</span></div>
+        <div class="ord-row"><span>Driver hands back</span><span>{{ driver_payback|order_money }}</span></div>
+    </div>
+
+    <div class="ord-section">
+        <h6>Customer</h6>
+        <div class="ord-row"><span>Name</span><span>{{ order.customer.display_name }}</span></div>
+        <div class="ord-row"><span>Phone</span><span><a href="tel:{{ order.phone }}">{{ order.phone }}</a></span></div>
+        <div class="ord-row"><span>Delivery</span><span>{{ order.delivery_type|capitalize }}</span></div>
+        <div class="ord-row"><span>Address</span><span class="text-end">{{ order.address }}</span></div>
+        {% if maps_url %}
+        <div class="ord-row"><span>Map</span><span><a href="{{ maps_url }}" target="_blank" rel="noopener">Open in maps</a></span></div>
+        {% elif order.maps_link %}
+        <div class="ord-row"><span>Map</span><span class="text-end">{{ order.maps_link }}</span></div>
+        {% endif %}
+    </div>
+
+    {% if order.delivery_type == 'grab' %}
+    <div class="ord-section">
+        <h6>Grab fee</h6>
+        <form class="ord-form" method="post" action="{{ url_for('admin_orders.grab_fee', order_id=order.id) }}">
+            <input class="form-control keyz-input" type="number" name="fee" step="0.01" min="0" inputmode="decimal" required placeholder="0.00" value="{{ '%.2f'|format(order.delivery_fee_driver) if order.delivery_fee_driver is not none }}">
+            <button type="submit" class="ord-btn ord-btn-primary">Save</button>
+        </form>
+    </div>
+    {% endif %}
+
+    {% if order.status == 'delivered' %}
+    <div class="ord-section">
+        <h6>Cash</h6>
+        <form class="ord-form" method="post" action="{{ url_for('admin_orders.cash', order_id=order.id) }}">
+            {% if order.cash_received %}
+            <input type="hidden" name="received" value="0">
+            <div class="ord-row flex-fill align-self-center">Received{% if order.cash_received_at %} · {{ order.cash_received_at|kh_datetime }}{% endif %}</div>
+            <button type="submit" class="ord-btn">Undo</button>
+            {% else %}
+            <input type="hidden" name="received" value="1">
+            <div class="ord-row flex-fill align-self-center">Not received yet</div>
+            <button type="submit" class="ord-btn ord-btn-primary">Mark received</button>
+            {% endif %}
+        </form>
+    </div>
+    {% endif %}
+
+    <div class="ord-section">
+        <h6>Note</h6>
+        <form method="post" action="{{ url_for('admin_orders.note', order_id=order.id) }}">
+            <textarea class="form-control keyz-input mb-2" name="admin_note" rows="3" maxlength="2000" style="height: auto !important;" placeholder="Only you can see this">{{ order.admin_note or '' }}</textarea>
+            <button type="submit" class="ord-btn">Save note</button>
+        </form>
+    </div>
+
+    <div class="ord-section">
+        <h6>History</h6>
+        <ul class="ord-timeline">
+            {% for log in order.status_logs %}
+            <li><span>{{ status_labels.get(log.to_status, log.to_status) }}</span><span>{{ log.created_at|kh_datetime }}</span></li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+{% endblock %}

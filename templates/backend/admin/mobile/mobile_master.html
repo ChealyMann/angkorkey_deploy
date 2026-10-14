@@ -236,7 +236,7 @@
             font-weight: 500;
             font-size: 0.7rem;
             transition: all 0.2s ease;
-            width: 25%;
+            width: 20%;
             height: 100%;
             border: none;
             background: transparent;
@@ -246,6 +246,24 @@
         .nav-item-tab i {
             font-size: 1.25rem;
             margin-bottom: 4px;
+        }
+
+        .nav-icon-wrap { position: relative; display: inline-flex; }
+        .nav-icon-wrap i { margin-bottom: 4px; }
+        .nav-badge {
+            position: absolute;
+            top: -6px;
+            right: -12px;
+            min-width: 18px;
+            height: 18px;
+            padding: 0 5px;
+            border-radius: 9px;
+            background: #ef4444;
+            color: #fff;
+            font-size: 0.625rem;
+            font-weight: 700;
+            line-height: 18px;
+            text-align: center;
         }
 
         .nav-item-tab.active {
@@ -472,6 +490,13 @@
         <a href="{{ url_for('mobile.product_list') }}" class="nav-item-tab {% if request.path.startswith(url_for('mobile.product_list')) and not 'variant' in request.path %}active{% endif %}">
             <i class="fa-solid fa-box"></i>
             <span>Products</span>
+        </a>
+        <a href="{{ url_for('admin_orders.order_list') }}" class="nav-item-tab {% if request.path.startswith(url_for('admin_orders.order_list')) %}active{% endif %}">
+            <span class="nav-icon-wrap">
+                <i class="fa-solid fa-receipt"></i>
+                {% if new_order_count %}<span class="nav-badge">{{ new_order_count if new_order_count <= 99 else '99+' }}</span>{% endif %}
+            </span>
+            <span>Orders</span>
         </a>
         <a href="{{ url_for('mobile.settings') }}" class="nav-item-tab {% if request.path == url_for('mobile.settings') %}active{% endif %}">
             <i class="fa-solid fa-sliders"></i>

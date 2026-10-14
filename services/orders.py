@@ -118,7 +118,7 @@ def _required_text(payload: dict, key: str, error: str) -> str:
 
 
 def _notify(order: Order, include_admin: bool = True) -> None:
-    """Send Telegram notifications; record failures on the order. Never raises.
+    """Send Telegram notifications; record failures on the order (and clear them on a clean round). Never raises.
 
     Senders are looked up on `telegram_bot` at call time so tests can replace them.
     """
@@ -135,10 +135,13 @@ def _notify(order: Order, include_admin: bool = True) -> None:
             error = str(exc) or exc.__class__.__name__
         if error:
             errors.append(error)
-    if not errors:
-        return
     try:
-        order.notify_error = "; ".join(errors)[:NOTIFY_ERROR_MAX]
+        if errors:
+            order.notify_error = "; ".join(errors)[:NOTIFY_ERROR_MAX]
+        elif order.notify_error is not None:  # every send worked (or was skipped): clear the old warning
+            order.notify_error = None
+        else:
+            return
         db.session.commit()
     except Exception:
         db.session.rollback()
