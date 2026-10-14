@@ -18,6 +18,9 @@ class VoucherError(Exception):
 def normalize_phone(phone):
     if not phone:
         return ""
+    # A Telegram account identity ("tg:<id>") is used as-is when there is no phone.
+    if phone.startswith("tg:"):
+        return phone
     # Remove all non-digits except +
     clean = "".join(c for c in phone if c.isdigit() or c == '+')
     # If it starts with +855, replace with 0

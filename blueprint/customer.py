@@ -38,7 +38,12 @@ def inject_bot_username():
     """
     username = os.environ.get("BOT_USERNAME") or Setting.get_val("bot_username", DEFAULT_BOT_USERNAME)
     username = str(username or "").strip().lstrip("@")
-    return {"bot_username": username or DEFAULT_BOT_USERNAME}
+    # The bot's numeric id (the public part of the token before ":"), for Telegram's login popup.
+    token_id = get_bot_token().split(":", 1)[0]
+    return {
+        "bot_username": username or DEFAULT_BOT_USERNAME,
+        "bot_id": token_id if token_id.isdigit() else "",
+    }
 
 
 @customer_bp.app_template_filter("kh_date")

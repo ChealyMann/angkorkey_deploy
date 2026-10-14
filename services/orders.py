@@ -159,8 +159,12 @@ def create_order(customer, payload: dict) -> Order:
     delivery_type = payload.get("delivery_type")
     if delivery_type not in DELIVERY_TYPES:
         raise OrderError("invalid_delivery")
-    phone = _required_text(payload, "phone", "phone_required")
+    # Phone is optional: customers are reachable on Telegram.
+    phone = payload.get("phone")
+    phone = (phone.strip()[:20] or None) if isinstance(phone, str) else None
     address = _required_text(payload, "address", "address_required")
+    # Who may redeem a voucher once: the phone if given, else the Telegram account.
+    voucher_holder = phone or f"tg:{customer.telegram_id}"
     maps_link = payload.get("maps_link")
     maps_link = (maps_link.strip() or None) if isinstance(maps_link, str) else None
 
@@ -172,7 +176,7 @@ def create_order(customer, payload: dict) -> Order:
     if code is not None and not isinstance(code, str):
         raise OrderError("voucher_invalid")
     if code and code.strip():
-        voucher, error = check_voucher(code, subtotal, phone, delivery_type)
+        voucher, error = check_voucher(code, subtotal, voucher_holder, delivery_type)
         if error:
             raise OrderError(error)
 
@@ -200,11 +204,12 @@ def create_order(customer, payload: dict) -> Order:
         order.items.extend(items)
         order.status_logs.append(OrderStatusLog(from_status=None, to_status="new"))
         db.session.add(order)
-        customer.phone = phone
+        if phone:
+            customer.phone = phone
         customer.address = address
         customer.maps_link = maps_link
         if voucher:
-            redeem_voucher(voucher, phone)
+            redeem_voucher(voucher, voucher_holder)
         db.session.commit()
     except VoucherError as exc:
         db.session.rollback()

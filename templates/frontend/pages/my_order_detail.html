@@ -79,10 +79,12 @@
 
     <div class="bg-white dark:bg-zinc-900/20 border border-zinc-200 dark:border-zinc-800 p-4 space-y-2 text-sm">
         <p class="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">{{ _('contact_details') }}</p>
+        {% if order.phone %}
         <div class="flex justify-between gap-4">
             <span class="text-zinc-500 dark:text-zinc-400">{{ _('phone') }}</span>
             <span>{{ order.phone }}</span>
         </div>
+        {% endif %}
         <div class="flex justify-between gap-4">
             <span class="text-zinc-500 dark:text-zinc-400">{{ _('address') }}</span>
             <span class="break-words min-w-0" style="text-align: right;">{{ order.address }}</span>

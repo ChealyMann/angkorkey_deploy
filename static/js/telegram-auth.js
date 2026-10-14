@@ -4,8 +4,9 @@
  * - Inside the Telegram Mini App, the page checks /api/me on load and, only if the
  *   customer is not signed in yet, posts initData to /auth/telegram/webapp (silently).
  *   A success is remembered for the page.
- * - In a normal browser, the Login Widget (templates/frontend/pages/sign_in.html)
- *   calls AngkorAuth.onWidgetAuth(user), which posts to /auth/telegram/widget.
+ * - In a normal browser, checkout opens Telegram's login popup by itself
+ *   (AngkorAuth.popupSignIn); the Login Widget button (templates/frontend/pages/sign_in.html)
+ *   stays as a fallback and calls AngkorAuth.onWidgetAuth(user). Both post to /auth/telegram/widget.
  *
  * Load after telegram-web-app.js and before any page script that uses it.
  */
@@ -59,6 +60,8 @@
         });
     }
 
+    var lastKnownSignedIn = null;  // result of the latest /api/me, or null before the first one
+
     /* GET /api/me; resolves {signed_in: false} on any failure. */
     function me() {
         return fetch('/api/me', { credentials: 'same-origin', cache: 'no-store' })
@@ -67,8 +70,64 @@
             .catch(function () { return {}; })
             .then(function (data) {
                 if (!data.signed_in) data.signed_in = false;
+                lastKnownSignedIn = data.signed_in === true;
                 return data;
             });
+    }
+
+    /* True only when the latest /api/me said the customer is signed out. */
+    function knownSignedOut() {
+        return lastKnownSignedIn === false;
+    }
+
+    function botId() {
+        var meta = document.querySelector('meta[name="telegram-bot-id"]');
+        var id = meta ? parseInt(meta.getAttribute('content'), 10) : NaN;
+        return isNaN(id) ? null : id;
+    }
+
+    /* Telegram's login popup (from telegram-widget.js) can be opened from script. */
+    function canPopupSignIn() {
+        return !isMiniApp() && !!botId()
+            && !!(window.Telegram && window.Telegram.Login && typeof window.Telegram.Login.auth === 'function');
+    }
+
+    /* Open Telegram's login popup and sign in with the result, without reloading the page.
+       Call it straight from a click handler (before any await) so the popup is not blocked.
+       Resolves true when the customer is signed in. */
+    function popupSignIn() {
+        if (!canPopupSignIn()) return Promise.resolve(false);
+        return new Promise(function (resolve) {
+            try {
+                window.Telegram.Login.auth(
+                    { bot_id: botId(), request_access: 'write', lang: document.documentElement.getAttribute('lang') || 'en' },
+                    function (user) {
+                        if (!user) {
+                            resolve(false);
+                            return;
+                        }
+                        postJSON('/auth/telegram/widget', user)
+                            .then(function (response) {
+                                return readJSON(response).then(function (data) {
+                                    var ok = response.ok && data.ok === true;
+                                    if (ok) {
+                                        lastKnownSignedIn = true;
+                                    } else {
+                                        api.lastError = data.error || 'sign_in_failed';
+                                    }
+                                    resolve(ok);
+                                });
+                            })
+                            .catch(function () {
+                                api.lastError = 'sign_in_failed';
+                                resolve(false);
+                            });
+                    }
+                );
+            } catch (e) {
+                resolve(false);
+            }
+        });
     }
 
     /* POST the Mini App's initData; resolves true when the server signed the customer in. */
@@ -194,6 +253,9 @@
         ensureSignedIn: ensureSignedIn,
         requestWriteAccessIfNeeded: requestWriteAccessIfNeeded,
         onWidgetAuth: onWidgetAuth,
+        canPopupSignIn: canPopupSignIn,
+        popupSignIn: popupSignIn,
+        knownSignedOut: knownSignedOut,
         me: me,
         showSignInError: showSignInError
     };

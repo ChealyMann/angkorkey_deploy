@@ -182,22 +182,6 @@
             <!-- STEP 2 CONTAINER -->
             <div id="checkout-step-2" class="space-y-5 hidden">
                 <div class="space-y-4">
-                    <!-- Phone Number Field -->
-                    <div>
-                        <label for="checkout-phone" class="block text-zinc-550 dark:text-zinc-400 text-xs font-semibold uppercase tracking-wider mb-2">
-                            {{ _('phone_number') }} <span class="text-red-600 dark:text-red-400">*</span>
-                        </label>
-                        <input 
-                            type="tel" 
-                            id="checkout-phone" 
-                            inputmode="numeric"
-                            pattern="[0-9]*"
-                            placeholder="{{ _('phone_placeholder') }}" 
-                            class="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-none py-3 px-4 text-sm text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:border-zinc-900 dark:focus:border-zinc-50 transition-all"
-                        >
-                        <p id="error-phone" class="text-red-600 dark:text-red-400 text-xs mt-1.5 hidden"></p>
-                    </div>
-
                     <!-- Delivery Address Field -->
                     <div>
                         <label for="checkout-address" class="block text-zinc-550 dark:text-zinc-400 text-xs font-semibold uppercase tracking-wider mb-2">
@@ -338,8 +322,7 @@
         const openCheckoutBtn = document.getElementById('open-checkout-btn');
         const closeCheckoutModal = document.getElementById('close-checkout-modal');
 
-        // Contact Details fields
-        const phoneInput = document.getElementById('checkout-phone');
+        // Contact Details fields (no phone: customers are reachable on Telegram)
         const addressInput = document.getElementById('checkout-address');
         const mapsInput = document.getElementById('checkout-maps');
 
@@ -363,7 +346,6 @@
 
         // Load contact details from localStorage, then prefer the signed-in customer's saved details.
         const contactFields = [
-            [phoneInput, 'checkout_phone', 'phone'],
             [addressInput, 'checkout_address', 'address'],
             [mapsInput, 'checkout_maps', 'maps_link'],
         ];
@@ -659,9 +641,9 @@
                     modalTitle.textContent = translations[currentLang] && translations[currentLang]['step_2'] ? translations[currentLang]['step_2'] : 'Step 2: Contact Info';
                 }
                 
-                const phoneInput = document.getElementById('checkout-phone');
-                if (phoneInput) {
-                    setTimeout(() => phoneInput.focus(), 150);
+                const addressField = document.getElementById('checkout-address');
+                if (addressField && !addressField.value) {
+                    setTimeout(() => addressField.focus(), 150);
                 }
             }
         }
@@ -765,7 +747,6 @@
 
         // Keyboard resizing flicker fix: temporarily disable transform transitions during active input focus
         const inputs = [
-            document.getElementById('checkout-phone'),
             document.getElementById('checkout-address'),
             document.getElementById('checkout-maps'),
             document.getElementById('checkout-voucher')
@@ -833,11 +814,11 @@
             }
             
             const subtotal = getCartSubtotal();
-            const phoneVal = phoneInput ? phoneInput.value.trim() : '';
             const deliveryType = getSelectedDelivery().type;
-            
+
             try {
-                const response = await fetch(`/api/validate_voucher?code=${encodeURIComponent(code)}&subtotal=${subtotal}&phone=${encodeURIComponent(phoneVal)}&delivery=${encodeURIComponent(deliveryType)}`);
+                // The once-per-customer check runs when the order is placed (by Telegram account).
+                const response = await fetch(`/api/validate_voucher?code=${encodeURIComponent(code)}&subtotal=${subtotal}&delivery=${encodeURIComponent(deliveryType)}`);
                 const data = await response.json();
                 if (requestId !== voucherRequestSeq) return;  // a newer check has started
                 
@@ -899,81 +880,6 @@
             });
         }
         
-        function validatePhoneLive() {
-            const phoneVal = phoneInput.value.trim();
-            const errorPhone = document.getElementById('error-phone');
-            const translations = JSON.parse(document.getElementById('translations-json').textContent || '{}');
-            const currentLang = getLang();
-
-            if (!phoneVal) {
-                // Empty state: default border, no error
-                phoneInput.classList.remove('border-red-600', 'dark:border-red-400', 'border-emerald-600', 'dark:border-emerald-400');
-                errorPhone.classList.add('hidden');
-                return false;
-            }
-
-            const cleanPhone = phoneVal.replace(/[\s-]/g, '');
-            const phoneRegex = /^(?:\+?855|0)?\d{8,9}$/;
-            const isValid = phoneRegex.test(cleanPhone);
-
-            if (isValid) {
-                // Valid state: green border, no error
-                phoneInput.classList.remove('border-red-600', 'dark:border-red-400');
-                phoneInput.classList.add('border-emerald-600', 'dark:border-emerald-400');
-                errorPhone.classList.add('hidden');
-                return true;
-            } else {
-                // If length is short, don't show red error while typing yet, unless they blur
-                // But if they have typed more than 12 chars, it is definitely invalid
-                if (cleanPhone.length > 12) {
-                    phoneInput.classList.remove('border-emerald-600', 'dark:border-emerald-400');
-                    phoneInput.classList.add('border-red-600', 'dark:border-red-400');
-                    errorPhone.textContent = translations[currentLang] && translations[currentLang]['err_phone_invalid'] ? translations[currentLang]['err_phone_invalid'] : 'Please enter a valid Cambodian phone number.';
-                    errorPhone.classList.remove('hidden');
-                } else {
-                    // Short/incomplete: clear green/red classes while typing
-                    phoneInput.classList.remove('border-red-600', 'dark:border-red-400', 'border-emerald-600', 'dark:border-emerald-400');
-                    errorPhone.classList.add('hidden');
-                }
-                return false;
-            }
-        }
-
-        if (phoneInput) {
-            phoneInput.addEventListener('input', () => {
-                validatePhoneLive();
-                if (appliedVoucherCode) {
-                    handleApplyVoucher();
-                }
-            });
-
-            phoneInput.addEventListener('blur', () => {
-                const phoneVal = phoneInput.value.trim();
-                const errorPhone = document.getElementById('error-phone');
-                const translations = JSON.parse(document.getElementById('translations-json').textContent || '{}');
-                const currentLang = getLang();
-
-                if (!phoneVal) {
-                    phoneInput.classList.remove('border-emerald-600', 'dark:border-emerald-400');
-                    phoneInput.classList.add('border-red-600', 'dark:border-red-400');
-                    errorPhone.textContent = translations[currentLang] && translations[currentLang]['err_phone_required'] ? translations[currentLang]['err_phone_required'] : 'Phone number is required.';
-                    errorPhone.classList.remove('hidden');
-                    return;
-                }
-
-                const cleanPhone = phoneVal.replace(/[\s-]/g, '');
-                const phoneRegex = /^(?:\+?855|0)?\d{8,9}$/;
-                const isValid = phoneRegex.test(cleanPhone);
-
-                if (!isValid) {
-                    phoneInput.classList.remove('border-emerald-600', 'dark:border-emerald-400');
-                    phoneInput.classList.add('border-red-600', 'dark:border-red-400');
-                    errorPhone.textContent = translations[currentLang] && translations[currentLang]['err_phone_invalid'] ? translations[currentLang]['err_phone_invalid'] : 'Please enter a valid Cambodian phone number.';
-                    errorPhone.classList.remove('hidden');
-                }
-            });
-        }
-
         const checkoutBtnLabel = document.getElementById('checkout-btn-label');
         let placing = false;
 
@@ -1032,19 +938,15 @@
             if (placing || cart.length === 0) return;
 
             // Clear previous errors
-            const errorPhone = document.getElementById('error-phone');
             const errorAddress = document.getElementById('error-address');
             const errorMaps = document.getElementById('error-maps');
 
-            errorPhone.classList.add('hidden');
             errorAddress.classList.add('hidden');
             errorMaps.classList.add('hidden');
 
-            phoneInput.classList.remove('border-red-600', 'dark:border-red-400');
             addressInput.classList.remove('border-red-600', 'dark:border-red-400');
             mapsInput.classList.remove('border-red-600', 'dark:border-red-400');
 
-            const phoneVal = phoneInput.value.trim();
             const addressVal = addressInput.value.trim();
             const mapsVal = mapsInput.value.trim();
 
@@ -1052,24 +954,7 @@
             const translations = JSON.parse(document.getElementById('translations-json').textContent || '{}');
             const currentLang = getLang();
 
-            // 1. Phone number validation
-            if (!phoneVal) {
-                errorPhone.textContent = translations[currentLang] && translations[currentLang]['err_phone_required'] ? translations[currentLang]['err_phone_required'] : 'Phone number is required.';
-                errorPhone.classList.remove('hidden');
-                phoneInput.classList.add('border-red-600', 'dark:border-red-400');
-                isValid = false;
-            } else {
-                const cleanPhone = phoneVal.replace(/[\s-]/g, '');
-                const phoneRegex = /^(?:\+?855|0)?\d{8,9}$/;
-                if (!phoneRegex.test(cleanPhone)) {
-                    errorPhone.textContent = translations[currentLang] && translations[currentLang]['err_phone_invalid'] ? translations[currentLang]['err_phone_invalid'] : 'Please enter a valid Cambodian phone number.';
-                    errorPhone.classList.remove('hidden');
-                    phoneInput.classList.add('border-red-600', 'dark:border-red-400');
-                    isValid = false;
-                }
-            }
-
-            // 2. Address validation
+            // 1. Address validation
             if (!addressVal) {
                 errorAddress.textContent = translations[currentLang] && translations[currentLang]['err_address_required'] ? translations[currentLang]['err_address_required'] : 'Delivery address is required.';
                 errorAddress.classList.remove('hidden');
@@ -1077,7 +962,7 @@
                 isValid = false;
             }
 
-            // 3. Maps link validation (optional)
+            // 2. Maps link validation (optional)
             if (mapsVal) {
                 const mapsRegex = /^(https?:\/\/)?(www\.)?(google\.com\/maps|maps\.app\.goo\.gl|goo\.gl\/maps|maps\.google\.com|apple\.com\/maps)/i;
                 if (!mapsRegex.test(mapsVal)) {
@@ -1093,17 +978,26 @@
             }
 
             // Save details to localStorage (also keeps them across a sign-in reload)
-            localStorage.setItem('checkout_phone', phoneVal);
             localStorage.setItem('checkout_address', addressVal);
             localStorage.setItem('checkout_maps', mapsVal);
+
+            const auth = window.AngkorAuth;
+            // In a browser, open Telegram's login popup right away when we already know the
+            // customer is signed out. It must start here, before any await, or the browser
+            // blocks the popup as not coming from the tap.
+            const popupLogin = (auth && auth.knownSignedOut() && auth.canPopupSignIn()) ? auth.popupSignIn() : null;
 
             hideOrderMessages();
             setPlacing(true);
             let leaving = false;
             try {
-                // 1. Sign in (silently in the Mini App; the Login Widget in a browser).
-                const signedIn = window.AngkorAuth ? await window.AngkorAuth.ensureSignedIn() : false;
+                // 1. Sign in: silently in the Mini App; Telegram's login popup in a browser.
+                let signedIn = popupLogin ? await popupLogin : (auth ? await auth.ensureSignedIn() : false);
+                if (!signedIn && !popupLogin && auth && auth.canPopupSignIn()) {
+                    signedIn = await auth.popupSignIn();
+                }
                 if (!signedIn) {
+                    // Popup closed or blocked: show the Telegram button as a fallback.
                     showSignIn();
                     return;
                 }
@@ -1119,7 +1013,6 @@
                     body: JSON.stringify({
                         items: cart.map(item => ({ variantId: item.variantId, quantity: Number(item.quantity) || 1 })),
                         delivery_type: getSelectedDelivery().type,
-                        phone: phoneVal,
                         address: addressVal,
                         maps_link: mapsVal,
                         voucher_code: appliedVoucherCode || null,

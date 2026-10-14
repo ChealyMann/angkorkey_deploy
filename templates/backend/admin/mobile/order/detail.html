@@ -61,7 +61,7 @@
     <div class="ord-section">
         <h6>Customer</h6>
         <div class="ord-row"><span>Name</span><span>{{ order.customer.display_name }}</span></div>
-        <div class="ord-row"><span>Phone</span><span><a href="tel:{{ order.phone }}">{{ order.phone }}</a></span></div>
+        {% if order.phone %}<div class="ord-row"><span>Phone</span><span><a href="tel:{{ order.phone }}">{{ order.phone }}</a></span></div>{% endif %}
         <div class="ord-row"><span>Delivery</span><span>{{ order.delivery_type|capitalize }}</span></div>
         <div class="ord-row"><span>Address</span><span class="text-end">{{ order.address }}</span></div>
         {% if maps_url %}

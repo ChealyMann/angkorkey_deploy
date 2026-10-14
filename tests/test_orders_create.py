@@ -137,17 +137,46 @@ def test_order_requires_same_origin(client, login_as, make_customer, make_produc
     assert r.status_code == 403 and Order.query.count() == 0
 
 
-def test_order_requires_phone_and_address(client, login_as, make_customer, make_product):
+def test_order_requires_address(client, login_as, make_customer, make_product):
     _, v = make_product(with_variant=True)
     login_as(make_customer())
     items = [{"variantId": v.id, "quantity": 1}]
-    for phone in ("", "   ", None, 12345678):
-        r = post_order(client, items=items, phone=phone)
-        assert r.status_code == 400 and r.json["error"] == "phone_required"
     for address in ("", "  ", None):
         r = post_order(client, items=items, address=address)
         assert r.status_code == 400 and r.json["error"] == "address_required"
     assert Order.query.count() == 0
+
+
+def test_phone_is_optional(client, login_as, make_customer, make_product, monkeypatch):
+    import services.telegram_bot as tb
+    monkeypatch.setattr(tb, "notify_admin_new_order", lambda o: None)
+    monkeypatch.setattr(tb, "notify_customer_status", lambda o: None)
+    _, v = make_product(with_variant=True)
+    customer = make_customer()
+    customer.phone = "099999999"
+    db.session.commit()
+    login_as(customer)
+    for phone in ("", "   ", None, 12345678):
+        r = post_order(client, items=[{"variantId": v.id, "quantity": 1}], phone=phone)
+        assert r.status_code == 201, phone
+    assert all(o.phone is None for o in Order.query.all())
+    assert db.session.get(Customer, customer.id).phone == "099999999"  # saved phone kept
+
+
+def test_voucher_without_phone_is_once_per_telegram_account(client, login_as, make_customer, make_product, monkeypatch):
+    import services.telegram_bot as tb
+    monkeypatch.setattr(tb, "notify_admin_new_order", lambda o: None)
+    monkeypatch.setattr(tb, "notify_customer_status", lambda o: None)
+    _, v = make_product(with_variant=True)
+    db.session.add(Voucher(code="FREE", min_spend=0))
+    db.session.commit()
+    customer = make_customer(telegram_id=4242)
+    login_as(customer)
+    items = [{"variantId": v.id, "quantity": 1}]
+    assert post_order(client, items=items, phone="", voucher_code="FREE").status_code == 201
+    r = post_order(client, items=items, phone="", voucher_code="FREE")
+    assert r.status_code == 400 and r.json["error"] == "voucher_already_used"
+    assert VoucherRedemption.query.one().phone_number == "tg:4242"
 
 
 def test_order_rejects_unknown_delivery_type(client, login_as, make_customer, make_product):

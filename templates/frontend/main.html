@@ -319,8 +319,9 @@
         {{ translations_json | safe }}
     </script>
     <!-- Telegram Mini App bridge + customer sign-in (window.AngkorAuth). Not deferred: page scripts use them. -->
+    <meta name="telegram-bot-id" content="{{ bot_id }}">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script src="{{ url_for('static', filename='js/telegram-auth.js') }}?v=4"></script>
+    <script src="{{ url_for('static', filename='js/telegram-auth.js') }}?v=5"></script>
 </head>
 <body class="bg-gray-50 text-gray-900 dark:bg-zinc-950 dark:text-zinc-50 antialiased selection:bg-red-500 selection:text-white min-h-screen transition-colors duration-300">
     <!-- Top Progress Bar Loader -->

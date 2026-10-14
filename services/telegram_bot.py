@@ -96,7 +96,10 @@ def notify_admin_new_order(order) -> str | None:
         f"Total to collect: ${order.total_to_collect or 0:.2f}",
         f"Delivery: {_e(delivery)}",
         f"Customer: {_e(order.customer.display_name)}",
-        f"Phone: {_e(order.phone)}",
+    ]
+    if order.phone:
+        lines.append(f"Phone: {_e(order.phone)}")
+    lines += [
         f"Address: {_e(order.address)}",
     ]
     if order.maps_link:

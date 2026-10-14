@@ -222,7 +222,7 @@ def test_telegram_auth_script_is_served(client):
 
 def test_layout_busts_service_worker_cache_for_auth_script(client):
     # sw.js serves /static/ cache-first forever, so the script URL must change with the file.
-    assert "js/telegram-auth.js?v=4" in html_of(client.get("/cart"))
+    assert "js/telegram-auth.js?v=5" in html_of(client.get("/cart"))
 
 
 def test_closing_checkout_clears_resume_flag(client):
@@ -264,3 +264,26 @@ def test_declined_write_access_is_remembered(client):
     request_fn = body[body.index("function requestWriteAccessIfNeeded(data)"):]
     assert "writeAccessDeclined()" in request_fn[:400]
     assert "rememberWriteAccessAnswer(!!allowed)" in request_fn
+
+
+# ---- No phone at checkout; Telegram login popup ---------------------------------
+
+def test_cart_has_no_phone_field(client):
+    html = html_of(client.get("/cart"))
+    assert 'id="checkout-phone"' not in html
+    assert "phone: phoneVal" not in html
+
+
+def test_bot_id_meta_comes_from_token(client, bot_token):
+    assert '<meta name="telegram-bot-id" content="123">' in client.get("/cart").get_data(as_text=True)
+
+
+def test_bot_id_meta_empty_without_token(client):
+    assert '<meta name="telegram-bot-id" content="">' in client.get("/cart").get_data(as_text=True)
+
+
+def test_checkout_opens_telegram_login_popup(client):
+    js = client.get("/static/js/telegram-auth.js").get_data(as_text=True)
+    assert "Telegram.Login.auth" in js and "popupSignIn" in js and "knownSignedOut" in js
+    cart = client.get("/cart").get_data(as_text=True)
+    assert "auth.popupSignIn()" in cart
