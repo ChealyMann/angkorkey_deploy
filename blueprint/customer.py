@@ -1,9 +1,11 @@
-from datetime import datetime
+import math
+from datetime import datetime, timezone
 
-from flask import Blueprint, jsonify, make_response, request, session
+from flask import Blueprint, abort, jsonify, make_response, render_template, request, session
+from sqlalchemy.orm import selectinload
 
 from extensions import db, limiter
-from models import Customer
+from models import Customer, Order, Setting
 from services.customer_session import (
     customer_auth_enabled,
     clear_customer_cookie,
@@ -12,7 +14,7 @@ from services.customer_session import (
     refresh_customer_cookie,
     reset_customer_state,
 )
-from services.orders import OrderError, create_order
+from services.orders import KH_TZ, OrderError, create_order
 from services.security import require_same_origin
 from services.telegram_auth import verify_login_widget, verify_webapp_init_data
 from services.telegram_bot import get_bot_token
@@ -22,6 +24,23 @@ customer_bp.before_app_request(reset_customer_state)
 customer_bp.after_app_request(refresh_customer_cookie)
 
 WIDGET_KEYS = ("id", "first_name", "last_name", "username", "photo_url", "auth_date", "hash")
+DEFAULT_BOT_USERNAME = "angkorkeywebsite_bot"
+MY_ORDERS_PAGE_SIZE = 20
+
+
+@customer_bp.app_context_processor
+def inject_bot_username():
+    """The Login Widget's bot. The same for every visitor, so safe in cached pages."""
+    username = str(Setting.get_val("bot_username", DEFAULT_BOT_USERNAME) or "").strip().lstrip("@")
+    return {"bot_username": username or DEFAULT_BOT_USERNAME}
+
+
+@customer_bp.app_template_filter("kh_date")
+def kh_date(value) -> str:
+    """Naive-UTC timestamp as a Cambodia-local date and time, e.g. 14/10/2026 01:30."""
+    if not value:
+        return ""
+    return value.replace(tzinfo=timezone.utc).astimezone(KH_TZ).strftime("%d/%m/%Y %H:%M")
 
 
 def upsert_customer(tg_user: dict, can_message):
@@ -148,3 +167,34 @@ def create_order_api():
     except OrderError as exc:
         return jsonify({"ok": False, "error": exc.code}), exc.status
     return jsonify({"ok": True, "order_id": order.id, "url": f"/my-orders/{order.id}?new=1"}), 201
+
+
+def _page_number() -> int:
+    try:
+        return max(int(request.args.get("page", 1)), 1)
+    except (TypeError, ValueError):
+        return 1
+
+
+@customer_bp.route('/my-orders')
+def my_orders():
+    customer = current_customer()
+    if customer is None:
+        return render_template('frontend/pages/my_orders.html', signed_in=False, orders=[], page=1, pages=1)
+    query = Order.query.filter_by(customer_id=customer.id)
+    pages = max(math.ceil(query.count() / MY_ORDERS_PAGE_SIZE), 1)
+    page = min(_page_number(), pages)
+    orders = (query.options(selectinload(Order.items))
+              .order_by(Order.created_at.desc(), Order.id.desc())
+              .limit(MY_ORDERS_PAGE_SIZE).offset((page - 1) * MY_ORDERS_PAGE_SIZE).all())
+    return render_template('frontend/pages/my_orders.html', signed_in=True, orders=orders, page=page, pages=pages)
+
+
+@customer_bp.route('/my-orders/<int:order_id>')
+def my_order_detail(order_id):
+    customer = current_customer()
+    order = db.session.get(Order, order_id)
+    if customer is None or order is None or order.customer_id != customer.id:
+        abort(404)
+    return render_template('frontend/pages/my_order_detail.html', order=order,
+                           is_new=request.args.get("new") == "1")

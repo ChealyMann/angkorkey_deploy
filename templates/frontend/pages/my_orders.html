@@ -1,0 +1,102 @@
+{% extends "frontend/main.html" %}
+
+{% block title %}{{ _('my_orders') }} · Angkorkey{% endblock %}
+{% block meta_robots %}noindex, nofollow{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-24 font-sans text-zinc-900 dark:text-zinc-100">
+
+    <div class="flex items-center justify-between mb-8 border-b border-zinc-100 dark:border-zinc-900 pb-5">
+        <h1 class="serif text-4xl font-bold tracking-tight">{{ _('my_orders') }}</h1>
+    </div>
+
+    {% if not signed_in %}
+    <div class="max-w-md mx-auto">
+        {% with sign_in_message=_('sign_in_to_view_orders') %}
+        {% include "frontend/pages/sign_in.html" %}
+        {% endwith %}
+    </div>
+    <script>
+        (function () {
+            // Inside the Mini App the silent sign-in is already running: reload once it succeeds.
+            if (!window.AngkorAuth || !window.AngkorAuth.isMiniApp()) return;
+            window.AngkorAuth.ensureSignedIn().then(function (ok) {
+                if (!ok) {
+                    window.AngkorAuth.showSignInError(
+                        window.AngkorAuth.lastError === 'auth_unavailable' ? 'err_auth_unavailable' : 'err_sign_in_failed');
+                    return;
+                }
+                // Guard against a reload loop if the cookie does not stick.
+                var key = 'angkorkey_my_orders_reload';
+                var last = 0;
+                try { last = Number(sessionStorage.getItem(key)) || 0; } catch (e) {}
+                if (Date.now() - last < 10000) {
+                    window.AngkorAuth.showSignInError('err_sign_in_failed');
+                    return;
+                }
+                try { sessionStorage.setItem(key, String(Date.now())); } catch (e) {}
+                window.location.reload();
+            });
+        })();
+    </script>
+
+    {% elif not orders %}
+    <div class="text-center py-20 bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800">
+        <i class="w-12 h-12 mx-auto text-zinc-400 mb-4" data-lucide="package"></i>
+        <p class="text-zinc-500 dark:text-zinc-400 text-sm mb-6">{{ _('no_orders_yet') }}</p>
+        <a href="{{ url_for('home.products') }}" class="inline-block bg-zinc-950 text-white dark:bg-zinc-50 dark:text-zinc-950 font-semibold px-6 py-3 text-xs uppercase tracking-wider hover:opacity-90 transition-all">
+            {{ _('continue_shopping') }}
+        </a>
+    </div>
+
+    {% else %}
+    <div class="space-y-3">
+        {% for order in orders %}
+        {% set item_count = order.items|sum(attribute='quantity') %}
+        <a href="{{ url_for('customer.my_order_detail', order_id=order.id) }}" class="block bg-white dark:bg-zinc-900/20 border border-zinc-200 dark:border-zinc-800 p-4 hover:bg-zinc-50 dark:hover:bg-zinc-900/60 transition-colors">
+            <div class="flex items-center justify-between gap-3">
+                <span class="font-bold">#{{ order.id }}</span>
+                <span class="ak-status ak-status-{{ order.status }}">{{ _('status_' ~ order.status) }}</span>
+            </div>
+            <div class="flex items-end justify-between gap-3 mt-2">
+                <div class="text-xs text-zinc-500 dark:text-zinc-400">
+                    <span>{{ order.created_at|kh_date }}</span>
+                    <span> · {{ item_count }} </span><span>{{ _('item_count') if item_count == 1 else _('items_count') }}</span>
+                </div>
+                <div class="text-sm font-bold" style="text-align: right;">
+                    {% if order.delivery_type == 'grab' and order.delivery_fee_charged is none %}
+                    <span>${{ '%.2f'|format(order.subtotal or 0) }}</span> <span class="text-xs font-semibold text-zinc-500 dark:text-zinc-400">{{ _('grab_fee_pending') }}</span>
+                    {% else %}
+                    <span>${{ '%.2f'|format(order.total_to_collect or 0) }}</span>
+                    {% endif %}
+                </div>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+
+    {% if pages > 1 %}
+    <div class="flex items-center justify-between mt-6 text-xs">
+        {% if page > 1 %}
+        <a href="{{ url_for('customer.my_orders', page=page - 1) }}" class="px-4 py-2 border border-zinc-200 dark:border-zinc-800 font-semibold uppercase tracking-wider"><span>←</span> <span>{{ _('newer') }}</span></a>
+        {% else %}<span></span>{% endif %}
+        <span class="text-zinc-500 dark:text-zinc-400">{{ page }} / {{ pages }}</span>
+        {% if page < pages %}
+        <a href="{{ url_for('customer.my_orders', page=page + 1) }}" class="px-4 py-2 border border-zinc-200 dark:border-zinc-800 font-semibold uppercase tracking-wider"><span>{{ _('older') }}</span> <span>→</span></a>
+        {% else %}<span></span>{% endif %}
+    </div>
+    {% endif %}
+    {% endif %}
+</div>
+<style>
+    .ak-status { display: inline-block; padding: 2px 8px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; border: 1px solid currentColor; white-space: nowrap; }
+    .ak-status-new, .ak-status-confirmed, .ak-status-packed { color: rgb(180, 83, 9); }
+    .ak-status-delivering { color: rgb(37, 99, 235); }
+    .ak-status-delivered { color: rgb(5, 150, 105); }
+    .ak-status-cancelled { color: rgb(113, 113, 122); }
+    html[lang="km"] .ak-status { letter-spacing: 0; }  /* spacing breaks Khmer glyph clusters */
+    .dark .ak-status-new, .dark .ak-status-confirmed, .dark .ak-status-packed { color: rgb(251, 191, 36); }
+    .dark .ak-status-delivering { color: rgb(96, 165, 250); }
+    .dark .ak-status-delivered { color: rgb(52, 211, 153); }
+</style>
+{% endblock %}

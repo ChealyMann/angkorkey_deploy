@@ -238,10 +238,17 @@
                     </div>
                 </div>
 
+                <!-- Shown when the customer must sign in before ordering -->
+                <div id="checkout-sign-in" class="hidden">
+                    {% include "frontend/pages/sign_in.html" %}
+                </div>
+
+                <p id="error-order" class="text-red-600 dark:text-red-400 text-xs hidden" role="alert"></p>
+
                 <div class="flex flex-col gap-2.5">
                     <button type="button" id="checkout-btn" class="w-full py-4 bg-zinc-950 text-white dark:bg-zinc-50 dark:text-zinc-950 font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 hover:opacity-90 active:scale-[0.98] transition-all cursor-pointer border-0">
-                        <i class="w-4 h-4" data-lucide="send"></i>
-                        <span>{{ _('confirm_order_tg') }}</span>
+                        <i class="w-4 h-4" data-lucide="check"></i>
+                        <span id="checkout-btn-label">{{ _('place_order') }}</span>
                     </button>
                     <button type="button" id="prev-step-btn" class="w-full py-3 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-900 dark:hover:bg-zinc-800 text-zinc-900 dark:text-zinc-100 font-bold text-xs uppercase tracking-wider transition-all cursor-pointer rounded-none border-0 active:scale-[0.99] flex items-center justify-center gap-1.5">
                         <i class="w-3.5 h-3.5" data-lucide="arrow-left"></i>
@@ -304,6 +311,10 @@
     #checkout-modal-overlay:not(.opacity-0), #clear-cart-modal-overlay:not(.opacity-0) {
         backdrop-filter: blur(4px);
     }
+    #checkout-btn:disabled {
+        opacity: 0.6;
+        cursor: wait;
+    }
 </style>
 
 <script>
@@ -340,11 +351,37 @@
 
         let appliedVoucherCode = null;
         let appliedVoucherMinSpend = 0.0;
+        let voucherRequestSeq = 0;
 
-        // Load contact details from localStorage
-        if (phoneInput) phoneInput.value = localStorage.getItem('checkout_phone') || '';
-        if (addressInput) addressInput.value = localStorage.getItem('checkout_address') || '';
-        if (mapsInput) mapsInput.value = localStorage.getItem('checkout_maps') || '';
+        // Translated text for `key` in the current language, or '' if missing.
+        function t(key) {
+            const translations = JSON.parse(document.getElementById('translations-json').textContent || '{}');
+            const currentLang = getLang();
+            return (translations[currentLang] && translations[currentLang][key]) || '';
+        }
+
+        // Load contact details from localStorage, then prefer the signed-in customer's saved details.
+        const contactFields = [
+            [phoneInput, 'checkout_phone', 'phone'],
+            [addressInput, 'checkout_address', 'address'],
+            [mapsInput, 'checkout_maps', 'maps_link'],
+        ];
+        contactFields.forEach(([input, storageKey]) => {
+            if (input) input.value = localStorage.getItem(storageKey) || '';
+        });
+        if (window.AngkorAuth) {
+            const prefilled = contactFields.map(([input]) => input ? input.value : '');
+            window.AngkorAuth.ensureSignedIn()
+                .then(signedIn => signedIn ? window.AngkorAuth.me() : null)
+                .then(me => {
+                    if (!me || !me.signed_in) return;
+                    contactFields.forEach(([input, , meKey], i) => {
+                        // Do not overwrite anything typed while /api/me was loading.
+                        if (input && me[meKey] && input.value === prefilled[i]) input.value = me[meKey];
+                    });
+                })
+                .catch(() => {});
+        }
 
         let cart = JSON.parse(localStorage.getItem('angkorkey_cart')) || [];
 
@@ -597,87 +634,6 @@
             }
         }
 
-        function buildTelegramMessage(phoneVal, addressVal, mapsVal) {
-            const currentLang = getLang();
-            let subtotal = 0;
-            const delivery = getSelectedDelivery();
-
-            const orderTitle = currentLang === 'km' ? '🛒 ការបញ្ជាទិញពី ANGKORKEY STORE' : '🛒 ANGKORKEY STORE ORDER';
-            const optionLabel = currentLang === 'km' ? 'ជម្រើស' : 'Option';
-            const qtyLabel = currentLang === 'km' ? 'ចំនួន' : 'Qty';
-            const priceLabel = currentLang === 'km' ? 'តម្លៃ' : 'Price';
-            const totalLabel = currentLang === 'km' ? 'សរុប' : 'Total';
-            const subtotalLabel = currentLang === 'km' ? 'សរុបរង' : 'Subtotal';
-            const deliveryLabel = currentLang === 'km' ? 'ដឹកជញ្ជូន' : 'Delivery';
-            const deliveryFeeLabel = currentLang === 'km' ? 'ថ្លៃដឹកជញ្ជូន' : 'Delivery Fee';
-            const grandTotalLabel = currentLang === 'km' ? 'សរុបរួម' : 'Grand Total';
-            const thankYouMsg = currentLang === 'km' ? '🙏 សូមអរគុណសម្រាប់ការបញ្ជាទិញរបស់អ្នក!' : '🙏 Thank you for your order!';
-
-            let message = `${orderTitle}\n`;
-            message += `━━━━━━━━━━━━━━\n\n`;
-
-            cart.forEach((item, index) => {
-                const name = safeText(item.name, 'Name Unavailable');
-                let optionsText = safeText(item.optionsText, 'Standard');
-                if (optionsText === 'Standard') {
-                    optionsText = currentLang === 'km' ? 'ធម្មតា' : 'Standard';
-                }
-                const price = Number(item.price) || 0;
-                const quantity = Number(item.quantity) || 1;
-                const itemTotal = price * quantity;
-
-                subtotal += itemTotal;
-
-                message += `${index + 1}. ${name}\n`;
-                if (optionsText) {
-                    message += `   ${optionLabel}: ${optionsText}\n`;
-                }
-                message += `   ${qtyLabel}: ${quantity}\n`;
-                message += `   ${priceLabel}: ${money(price)}\n`;
-                message += `   ${totalLabel}: ${money(itemTotal)}\n\n`;
-            });
-
-            message += `━━━━━━━━━━━━━━\n`;
-            message += `${subtotalLabel}: ${money(subtotal)}\n`;
-
-            const deliveryName = currentLang === 'km' ? delivery.nameKh : delivery.nameEn;
-
-            if (delivery.type === 'standard') {
-                const fee = appliedVoucherCode ? 0 : delivery.fee;
-                const finalTotal = subtotal + fee;
-                message += `${deliveryLabel}: ${deliveryName}\n`;
-                message += `${deliveryFeeLabel}: ${money(fee)}\n`;
-                message += `${grandTotalLabel}: ${money(finalTotal)}\n`;
-            } else if (delivery.type === 'grab') {
-                message += `${deliveryLabel}: ${deliveryName}\n`;
-                message += `${grandTotalLabel}: ${money(subtotal)} + Grab Fee\n`;
-            }
-
-            // Append contact details
-            const translations = JSON.parse(document.getElementById('translations-json').textContent || '{}');
-            const contactLabel = translations[currentLang] && translations[currentLang]['contact_details'] ? translations[currentLang]['contact_details'] : 'Contact Details';
-            const phoneLabelText = translations[currentLang] && translations[currentLang]['phone'] ? translations[currentLang]['phone'] : 'Phone';
-            const addressLabelText = translations[currentLang] && translations[currentLang]['address'] ? translations[currentLang]['address'] : 'Address';
-            const mapLabelText = translations[currentLang] && translations[currentLang]['map'] ? translations[currentLang]['map'] : 'Map';
-            const voucherLabelText = translations[currentLang] && translations[currentLang]['voucher'] ? translations[currentLang]['voucher'] : 'Voucher';
-
-            message += `━━━━━━━━━━━━━━\n`;
-            message += `${contactLabel}:\n`;
-            message += `• ${phoneLabelText}: ${phoneVal}\n`;
-            message += `• ${addressLabelText}: ${addressVal}\n`;
-            if (mapsVal) {
-                message += `• ${mapLabelText}: ${mapsVal}\n`;
-            }
-            if (appliedVoucherCode) {
-                message += `• ${voucherLabelText}: ${appliedVoucherCode} (Free Delivery)\n`;
-            }
-
-            message += `━━━━━━━━━━━━━━\n`;
-            message += `${thankYouMsg}`;
-
-            return message;
-        }
-
         // Modal triggers
         function goToStep(step) {
             const step1 = document.getElementById('checkout-step-1');
@@ -707,6 +663,7 @@
         }
 
         function showCheckoutModal() {
+            hideOrderMessages();
             goToStep(1);
             checkoutModal.classList.remove('hidden');
             checkoutModal.offsetHeight; // force reflow
@@ -829,6 +786,10 @@
             radio.addEventListener('change', () => {
                 updateSummary();
                 updateDeliveryUI();
+                // Vouchers only apply to Standard delivery: re-check the code for the new option.
+                if (voucherInput && voucherInput.value.trim()) {
+                    handleApplyVoucher();
+                }
             });
         });
 
@@ -838,8 +799,14 @@
             
             if (errorVoucher) errorVoucher.classList.add('hidden');
             if (voucherSuccess) voucherSuccess.classList.add('hidden');
-            
-            if (!code) return;
+            const requestId = ++voucherRequestSeq;
+
+            if (!code) {
+                appliedVoucherCode = null;
+                appliedVoucherMinSpend = 0.0;
+                updateSummary();
+                return;
+            }
             
             const currentLang = getLang();
             const translations = JSON.parse(document.getElementById('translations-json').textContent || '{}');
@@ -850,18 +817,23 @@
                 if (errorVoucher) {
                     errorVoucher.textContent = translations[currentLang] && translations[currentLang]['err_voucher_already_used'] 
                         ? translations[currentLang]['err_voucher_already_used'] 
-                        : 'This voucher has already been used on this device.';
+                        : 'You have already used this voucher.';
                     errorVoucher.classList.remove('hidden');
                 }
+                appliedVoucherCode = null;
+                appliedVoucherMinSpend = 0.0;
+                updateSummary();
                 return;
             }
             
             const subtotal = getCartSubtotal();
             const phoneVal = phoneInput ? phoneInput.value.trim() : '';
+            const deliveryType = getSelectedDelivery().type;
             
             try {
-                const response = await fetch(`/api/validate_voucher?code=${encodeURIComponent(code)}&subtotal=${subtotal}&phone=${encodeURIComponent(phoneVal)}`);
+                const response = await fetch(`/api/validate_voucher?code=${encodeURIComponent(code)}&subtotal=${subtotal}&phone=${encodeURIComponent(phoneVal)}&delivery=${encodeURIComponent(deliveryType)}`);
                 const data = await response.json();
+                if (requestId !== voucherRequestSeq) return;  // a newer check has started
                 
                 if (data.valid) {
                     appliedVoucherCode = data.code;
@@ -877,15 +849,19 @@
                     appliedVoucherCode = null;
                     appliedVoucherMinSpend = 0.0;
                     if (errorVoucher) {
-                        let msg = data.message;
-                        if (msg.includes("Invalid")) {
+                        let msg = data.message || '';
+                        if (msg.includes("Standard delivery only")) {
+                            msg = t('err_voucher_standard_only') || msg;
+                        } else if (msg.includes("Invalid")) {
                             msg = (translations[currentLang] && translations[currentLang]['err_voucher_invalid']) || msg;
                         } else if (msg.includes("inactive")) {
                             msg = (translations[currentLang] && translations[currentLang]['err_voucher_inactive']) || msg;
                         } else if (msg.includes("limit reached")) {
                             msg = (translations[currentLang] && translations[currentLang]['err_voucher_limit']) || msg;
                         } else if (msg.includes("Minimum spend")) {
-                            msg = (translations[currentLang] && translations[currentLang]['err_voucher_min_spend']) ? translations[currentLang]['err_voucher_min_spend'].replace('${min_spend}', data.min_spend.toFixed(2)) : msg;
+                            const minMatch = msg.match(/\$([\d.]+)/);
+                            const minSpend = typeof data.min_spend === 'number' ? data.min_spend.toFixed(2) : (minMatch ? minMatch[1] : '');
+                            msg = (translations[currentLang] && translations[currentLang]['err_voucher_min_spend'] && minSpend) ? translations[currentLang]['err_voucher_min_spend'].replace('${min_spend}', minSpend) : msg;
                         } else if (msg.includes("already used")) {
                             msg = (translations[currentLang] && translations[currentLang]['err_voucher_phone_already_used']) || msg;
                         }
@@ -896,6 +872,7 @@
                 }
             } catch (err) {
                 console.error("Voucher validation error:", err);
+                if (requestId !== voucherRequestSeq) return;
                 if (errorVoucher) {
                     errorVoucher.textContent = "Error validating voucher code.";
                     errorVoucher.classList.remove('hidden');
@@ -991,8 +968,62 @@
             });
         }
 
+        const RESUME_KEY = 'angkorkey_resume_checkout';
+        const checkoutBtnLabel = document.getElementById('checkout-btn-label');
+        let placing = false;
+
+        // Disable the confirm button while an order is being placed (the server also guards double taps).
+        function setPlacing(on) {
+            placing = on;
+            checkoutBtn.disabled = on;
+            checkoutBtn.setAttribute('aria-busy', on ? 'true' : 'false');
+            if (checkoutBtnLabel) {
+                checkoutBtnLabel.textContent = t(on ? 'placing_order' : 'place_order') || checkoutBtnLabel.textContent;
+            }
+        }
+
+        function hideOrderMessages() {
+            const orderError = document.getElementById('error-order');
+            const signInBox = document.getElementById('checkout-sign-in');
+            if (orderError) orderError.classList.add('hidden');
+            if (signInBox) signInBox.classList.add('hidden');
+        }
+
+        function showOrderError(code) {
+            const orderError = document.getElementById('error-order');
+            if (!orderError) return;
+            let msg = (code && t('err_' + code)) || t('err_order_failed') || 'We could not place your order. Please try again.';
+            if (code === 'voucher_min_spend') {
+                msg = msg.replace('${min_spend}', appliedVoucherMinSpend ? Number(appliedVoucherMinSpend).toFixed(2) : '');
+            }
+            orderError.textContent = msg;
+            orderError.classList.remove('hidden');
+            orderError.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        // Show the Telegram sign-in prompt inside the checkout modal. The cart stays in localStorage.
+        function showSignIn() {
+            const signInBox = document.getElementById('checkout-sign-in');
+            if (signInBox) signInBox.classList.remove('hidden');
+            const auth = window.AngkorAuth;
+            if (auth && auth.isMiniApp()) {
+                // The Mini App signs in by itself, so reaching here means that failed.
+                auth.showSignInError(auth.lastError === 'auth_unavailable' ? 'err_auth_unavailable' : 'err_sign_in_failed');
+            } else {
+                // After the Login Widget signs in, the page reloads: reopen checkout where we left off.
+                try {
+                    sessionStorage.setItem(RESUME_KEY, JSON.stringify({
+                        delivery: getSelectedDelivery().type,
+                        voucher: appliedVoucherCode || '',
+                    }));
+                } catch (e) { /* private mode: the customer just reopens checkout */ }
+            }
+            if (window.lucide) window.lucide.createIcons();
+            if (signInBox) signInBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
         checkoutBtn.addEventListener('click', async () => {
-            if (cart.length === 0) return;
+            if (placing || cart.length === 0) return;
 
             // Clear previous errors
             const errorPhone = document.getElementById('error-phone');
@@ -1055,48 +1086,101 @@
                 return;
             }
 
-            // Save details to localStorage
+            // Save details to localStorage (also keeps them across a sign-in reload)
             localStorage.setItem('checkout_phone', phoneVal);
             localStorage.setItem('checkout_address', addressVal);
             localStorage.setItem('checkout_maps', mapsVal);
 
-            // Increment voucher usage
-            if (appliedVoucherCode) {
-                try {
-                    await fetch('/api/use_voucher', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({ code: appliedVoucherCode, phone: phoneVal })
-                    });
-
-                    // Save to used list in localStorage
-                    const usedVouchers = JSON.parse(localStorage.getItem('angkorkey_used_vouchers') || '[]');
-                    if (!usedVouchers.includes(appliedVoucherCode)) {
-                        usedVouchers.push(appliedVoucherCode);
-                        localStorage.setItem('angkorkey_used_vouchers', JSON.stringify(usedVouchers));
-                    }
-                } catch (err) {
-                    console.error("Error recording voucher usage:", err);
+            hideOrderMessages();
+            setPlacing(true);
+            let leaving = false;
+            try {
+                // 1. Sign in (silently in the Mini App; the Login Widget in a browser).
+                const signedIn = window.AngkorAuth ? await window.AngkorAuth.ensureSignedIn() : false;
+                if (!signedIn) {
+                    showSignIn();
+                    return;
                 }
+
+                // 2. In the Mini App, ask once to allow order updates from the bot.
+                await window.AngkorAuth.requestWriteAccessIfNeeded(await window.AngkorAuth.me());
+
+                // 3. Place the order. The server prices it and redeems the voucher.
+                const response = await fetch('/api/orders', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        items: cart.map(item => ({ variantId: item.variantId, quantity: Number(item.quantity) || 1 })),
+                        delivery_type: getSelectedDelivery().type,
+                        phone: phoneVal,
+                        address: addressVal,
+                        maps_link: mapsVal,
+                        voucher_code: appliedVoucherCode || null,
+                    }),
+                });
+                const data = await response.json().catch(() => ({}));
+
+                if (response.status === 201 && data.ok && data.url) {
+                    rememberUsedVoucher(appliedVoucherCode);
+                    cart = [];
+                    localStorage.setItem('angkorkey_cart', JSON.stringify(cart));
+                    if (window.updateGlobalCartBadge) window.updateGlobalCartBadge();
+                    leaving = true;
+                    window.location.href = data.url;
+                    return;
+                }
+                if (data.error === 'sign_in_required') {
+                    showSignIn();
+                    return;
+                }
+                if (typeof data.error === 'string' && data.error.startsWith('voucher_')) {
+                    // The voucher was not accepted: drop it so the total shows the delivery fee again.
+                    appliedVoucherCode = null;
+                    if (voucherSuccess) voucherSuccess.classList.add('hidden');
+                    updateSummary();
+                }
+                showOrderError(data.error);
+            } catch (err) {
+                console.error('Order failed:', err);
+                showOrderError(null);
+            } finally {
+                if (!leaving) setPlacing(false);
             }
-
-            const message = buildTelegramMessage(phoneVal, addressVal, mapsVal);
-            const telegramUsername = '{{ telegram_username }}';
-            const tgUrl = `https://t.me/${telegramUsername}?text=${encodeURIComponent(message)}`;
-
-            window.open(tgUrl, '_blank');
-
-            // Clear cart immediately
-            cart = [];
-            saveCart();
-
-            // Close order summary modal
-            hideCheckoutModal();
         });
 
+        // Remember a redeemed voucher on this device so the voucher check can say so right away.
+        function rememberUsedVoucher(code) {
+            if (!code) return;
+            const usedVouchers = JSON.parse(localStorage.getItem('angkorkey_used_vouchers') || '[]');
+            if (!usedVouchers.includes(code)) {
+                usedVouchers.push(code);
+                localStorage.setItem('angkorkey_used_vouchers', JSON.stringify(usedVouchers));
+            }
+        }
+
+        // Resume checkout after signing in with the Login Widget (the page reloads; the cart is in localStorage).
+        function resumeCheckoutAfterSignIn() {
+            let saved = null;
+            try {
+                saved = JSON.parse(sessionStorage.getItem(RESUME_KEY) || 'null');
+                sessionStorage.removeItem(RESUME_KEY);
+            } catch (e) {
+                saved = null;
+            }
+            if (!saved || cart.length === 0) return;
+            const radio = document.querySelector(`input[name="delivery_option"][value="${saved.delivery === 'grab' ? 'grab' : 'standard'}"]`);
+            if (radio) radio.checked = true;
+            showCheckoutModal();
+            goToStep(2);
+            if (saved.voucher && voucherInput) {
+                voucherInput.value = saved.voucher;
+                handleApplyVoucher();
+            }
+        }
+
         renderCart();
+        resumeCheckoutAfterSignIn();
     }
 
     if (document.readyState === 'loading') {

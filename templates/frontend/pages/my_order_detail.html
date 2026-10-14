@@ -1,0 +1,109 @@
+{% extends "frontend/main.html" %}
+
+{% block title %}#{{ order.id }} · {{ _('my_orders') }} · Angkorkey{% endblock %}
+{% block meta_robots %}noindex, nofollow{% endblock %}
+
+{% block content %}
+{% set grab_fee_pending = order.delivery_type == 'grab' and order.delivery_fee_charged is none %}
+<div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-24 font-sans text-zinc-900 dark:text-zinc-100">
+
+    <a href="{{ url_for('customer.my_orders') }}" class="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white mb-6">
+        <i class="w-4 h-4" data-lucide="arrow-left"></i>
+        <span>{{ _('back_to_my_orders') }}</span>
+    </a>
+
+    {% if is_new %}
+    <div class="border border-emerald-200 bg-emerald-50 text-emerald-700 p-5 mb-6" role="status">
+        <div class="flex items-center gap-2 mb-1">
+            <i class="w-5 h-5" data-lucide="circle-check"></i>
+            <p class="text-sm font-bold uppercase tracking-wider">{{ _('order_placed') }}</p>
+        </div>
+        <p class="text-sm mb-1"><span>{{ _('order_number') }}</span>: <strong>#{{ order.id }}</strong></p>
+        <p class="text-xs mb-4">{{ _('order_placed_desc') }}</p>
+        <a href="https://t.me/{{ telegram_username }}" target="_blank" rel="noopener" class="inline-flex items-center gap-2 bg-zinc-950 text-white dark:bg-zinc-50 dark:text-zinc-950 font-bold text-xs uppercase tracking-wider px-5 py-3 hover:opacity-90 transition-all">
+            <i class="w-4 h-4" data-lucide="send"></i>
+            <span>{{ _('chat_with_us') }}</span>
+        </a>
+    </div>
+    {% endif %}
+
+    <div class="flex items-center justify-between gap-3 border-b border-zinc-100 dark:border-zinc-900 pb-4 mb-4">
+        <div>
+            <h1 class="serif text-3xl font-bold tracking-tight">#{{ order.id }}</h1>
+            <p class="text-xs text-zinc-500 dark:text-zinc-400 mt-1">{{ order.created_at|kh_date }}</p>
+        </div>
+        <span class="ak-status ak-status-{{ order.status }}">{{ _('status_' ~ order.status) }}</span>
+    </div>
+
+    <div class="bg-white dark:bg-zinc-900/20 border border-zinc-200 dark:border-zinc-800 p-4 mb-4">
+        {% for item in order.items %}
+        <div class="flex justify-between gap-4 py-3 {{ 'border-t border-zinc-100 dark:border-zinc-900' if not loop.first }}">
+            <div class="min-w-0">
+                <p class="text-sm font-bold">{{ item.name }}</p>
+                {% if item.options_text %}<p class="text-xs text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">{{ item.options_text }}</p>{% endif %}
+                <p class="text-xs text-zinc-500 dark:text-zinc-400 mt-1">{{ item.quantity }} × ${{ '%.2f'|format(item.unit_price or 0) }}</p>
+            </div>
+            <p class="text-sm font-bold whitespace-nowrap">${{ '%.2f'|format((item.unit_price or 0) * (item.quantity or 0)) }}</p>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="bg-white dark:bg-zinc-900/20 border border-zinc-200 dark:border-zinc-800 p-4 mb-4 space-y-2 text-sm">
+        <div class="flex justify-between gap-4">
+            <span class="text-zinc-500 dark:text-zinc-400">{{ _('subtotal') }}</span>
+            <span class="font-bold">${{ '%.2f'|format(order.subtotal or 0) }}</span>
+        </div>
+        <div class="flex justify-between gap-4">
+            <span class="text-zinc-500 dark:text-zinc-400">{{ _('delivery') }}</span>
+            <span>{{ _('grab_delivery') if order.delivery_type == 'grab' else _('standard_delivery') }}</span>
+        </div>
+        <div class="flex justify-between gap-4">
+            <span class="text-zinc-500 dark:text-zinc-400">{{ _('delivery_fee') }}</span>
+            {% if grab_fee_pending %}
+            <span>{{ _('grab_fee_pending') }}</span>
+            {% elif order.voucher_code and not order.delivery_fee_charged %}
+            <span class="font-bold"><span>{{ _('free') }}</span> ({{ order.voucher_code }})</span>
+            {% else %}
+            <span class="font-bold">${{ '%.2f'|format(order.delivery_fee_charged or 0) }}</span>
+            {% endif %}
+        </div>
+        <div class="flex justify-between items-end gap-4 border-t border-zinc-100 dark:border-zinc-900 pt-3">
+            <span class="font-bold">{{ _('total') }}</span>
+            {% if grab_fee_pending %}
+            <span class="text-lg font-bold"><span>${{ '%.2f'|format(order.subtotal or 0) }}</span> <span class="text-xs font-semibold text-zinc-500 dark:text-zinc-400">{{ _('grab_fee_pending') }}</span></span>
+            {% else %}
+            <span class="text-lg font-bold">${{ '%.2f'|format(order.total_to_collect or 0) }}</span>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="bg-white dark:bg-zinc-900/20 border border-zinc-200 dark:border-zinc-800 p-4 space-y-2 text-sm">
+        <p class="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">{{ _('contact_details') }}</p>
+        <div class="flex justify-between gap-4">
+            <span class="text-zinc-500 dark:text-zinc-400">{{ _('phone') }}</span>
+            <span>{{ order.phone }}</span>
+        </div>
+        <div class="flex justify-between gap-4">
+            <span class="text-zinc-500 dark:text-zinc-400">{{ _('address') }}</span>
+            <span class="break-words min-w-0" style="text-align: right;">{{ order.address }}</span>
+        </div>
+        {% if order.maps_link and (order.maps_link.startswith('https://') or order.maps_link.startswith('http://')) %}
+        <div class="flex justify-between gap-4">
+            <span class="text-zinc-500 dark:text-zinc-400">{{ _('map') }}</span>
+            <a href="{{ order.maps_link }}" target="_blank" rel="noopener noreferrer" class="underline">Google Maps</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+<style>
+    .ak-status { display: inline-block; padding: 2px 8px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; border: 1px solid currentColor; white-space: nowrap; }
+    .ak-status-new, .ak-status-confirmed, .ak-status-packed { color: rgb(180, 83, 9); }
+    .ak-status-delivering { color: rgb(37, 99, 235); }
+    .ak-status-delivered { color: rgb(5, 150, 105); }
+    .ak-status-cancelled { color: rgb(113, 113, 122); }
+    html[lang="km"] .ak-status { letter-spacing: 0; }  /* spacing breaks Khmer glyph clusters */
+    .dark .ak-status-new, .dark .ak-status-confirmed, .dark .ak-status-packed { color: rgb(251, 191, 36); }
+    .dark .ak-status-delivering { color: rgb(96, 165, 250); }
+    .dark .ak-status-delivered { color: rgb(52, 211, 153); }
+</style>
+{% endblock %}

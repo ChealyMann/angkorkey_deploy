@@ -194,7 +194,6 @@ def product_detail(product_id):
             "sku": variant.sku,
             "price": variant.price,
             "old_price": variant.old_price,
-            "cost": variant.cost,
             "stock": stock_val,  # <--- Now safely passes a JSON-compatible string
             "status": variant.status,
             "options": options,
