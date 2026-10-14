@@ -68,6 +68,13 @@ def test_sign_in_widget_uses_bot_username_setting(client):
     assert 'data-telegram-login="other_bot"' in html_of(client.get("/my-orders"))
 
 
+def test_bot_username_env_overrides_setting(client, monkeypatch):
+    db.session.add(Setting(key="bot_username", value="other_bot"))
+    db.session.commit()
+    monkeypatch.setenv("BOT_USERNAME", "@angkorkey_dev_bot")
+    assert 'data-telegram-login="angkorkey_dev_bot"' in html_of(client.get("/my-orders"))
+
+
 def test_cart_page_includes_sign_in_partial(client):
     html = html_of(client.get("/cart"))
     assert "telegram-widget.js" in html and 'data-request-access="write"' in html

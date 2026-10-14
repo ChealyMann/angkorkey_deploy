@@ -74,3 +74,6 @@ copykeyz
 
 # Flask-Session filesystem fallback
 flask_session/
+
+# Local dev runner (holds the dev bot token)
+run_dev.ps1

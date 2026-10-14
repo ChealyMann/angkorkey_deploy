@@ -1,4 +1,5 @@
 import math
+import os
 from datetime import datetime, timezone
 
 from flask import Blueprint, abort, jsonify, make_response, render_template, request, session
@@ -30,8 +31,13 @@ MY_ORDERS_PAGE_SIZE = 20
 
 @customer_bp.app_context_processor
 def inject_bot_username():
-    """The Login Widget's bot. The same for every visitor, so safe in cached pages."""
-    username = str(Setting.get_val("bot_username", DEFAULT_BOT_USERNAME) or "").strip().lstrip("@")
+    """The Login Widget's bot. The same for every visitor, so safe in cached pages.
+
+    BOT_USERNAME in the environment wins, so a local dev bot can be used
+    without touching the database (pair it with TELEGRAM_BOT_TOKEN).
+    """
+    username = os.environ.get("BOT_USERNAME") or Setting.get_val("bot_username", DEFAULT_BOT_USERNAME)
+    username = str(username or "").strip().lstrip("@")
     return {"bot_username": username or DEFAULT_BOT_USERNAME}
 
 
