@@ -71,3 +71,6 @@ copykeyz
 
 # Superpowers brainstorm mockups
 .superpowers/
+
+# Flask-Session filesystem fallback
+flask_session/

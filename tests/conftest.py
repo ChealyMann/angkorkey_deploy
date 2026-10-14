@@ -14,6 +14,24 @@ from app import app as flask_app  # noqa: E402
 from extensions import db, limiter, cache  # noqa: E402
 
 
+def _refuse_unless_temp_db():
+    uri = flask_app.config["SQLALCHEMY_DATABASE_URI"]
+    repo_instance = os.path.realpath(
+        os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "instance")
+    )
+    path = os.path.realpath(uri.split("sqlite:///", 1)[-1])
+    try:
+        inside_instance = os.path.commonpath([path, repo_instance]) == repo_instance
+    except ValueError:  # different drives -> cannot be inside
+        inside_instance = False
+    if uri != os.environ["DATABASE_URL"] or inside_instance:
+        pytest.exit("refusing to run: tests not pointed at temp DB", returncode=2)
+
+
+# Hard guard: runs at conftest import, before any fixture can touch the DB.
+_refuse_unless_temp_db()
+
+
 @pytest.fixture
 def app():
     flask_app.config["TESTING"] = True
