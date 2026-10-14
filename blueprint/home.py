@@ -3,7 +3,7 @@ from sqlalchemy.orm import subqueryload, joinedload, contains_eager
 from sqlalchemy import func, or_, and_, case
 from extensions import db, cache
 
-from models import Category, Product, Promotion, Brand, Setting, Voucher, VoucherRedemption
+from models import Category, Product, Promotion, Brand, Setting, Voucher
 from models.ProductVariant import (
     ProductVariant,
     ProductVariantOption,
@@ -11,6 +11,7 @@ from models.ProductVariant import (
     ProductOptionType,
     VariantOption,
 )
+from services.vouchers import check_voucher
 
 home_bp = Blueprint("home", __name__)
 
@@ -614,111 +615,41 @@ def brand_products(brand_id):
     )
 
 
-def normalize_phone(phone):
-    if not phone:
-        return ""
-    # Remove all non-digits except +
-    clean = "".join(c for c in phone if c.isdigit() or c == '+')
-    # If it starts with +855, replace with 0
-    if clean.startswith("+855"):
-        clean = "0" + clean[4:]
-    # If it starts with 855, replace with 0
-    elif clean.startswith("855"):
-        clean = "0" + clean[3:]
-    return clean
+VOUCHER_MESSAGES = {
+    "voucher_required": "Voucher code is required.",
+    "voucher_invalid": "Invalid voucher code.",
+    "voucher_inactive": "This voucher is inactive.",
+    "voucher_limit_reached": "Voucher usage limit reached.",
+    "voucher_already_used": "This phone number has already used this voucher code.",
+    "voucher_standard_only": "Vouchers apply to Standard delivery only.",
+}
 
 
 @home_bp.route("/api/validate_voucher", methods=["GET"])
 def api_validate_voucher():
     code = request.args.get("code", "").strip().upper()
-    subtotal = float(request.args.get("subtotal", 0))
+    try:
+        subtotal = float(request.args.get("subtotal", 0))
+    except ValueError:
+        subtotal = 0.0
     phone = request.args.get("phone", "").strip()
-    
-    if not code:
-        return jsonify({"valid": False, "message": "Voucher code is required."}), 400
-        
-    voucher = Voucher.query.filter_by(code=code).first()
-    
-    if not voucher:
-        return jsonify({"valid": False, "message": "Invalid voucher code."}), 200
-        
-    if voucher.status != "true":
-        return jsonify({"valid": False, "message": "This voucher is inactive."}), 200
-        
-    if voucher.usage_limit is not None and voucher.usage_count >= voucher.usage_limit:
-        return jsonify({"valid": False, "message": "Voucher usage limit reached."}), 200
-        
-    if subtotal < voucher.min_spend:
+    delivery = request.args.get("delivery", "standard")
+
+    voucher, error = check_voucher(code, subtotal, phone, delivery)
+    if error == "voucher_required":
+        return jsonify({"valid": False, "message": VOUCHER_MESSAGES[error]}), 400
+    if error == "voucher_min_spend":
+        min_spend = Voucher.query.filter_by(code=code).first().min_spend
         return jsonify({
             "valid": False,
-            "message": f"Minimum spend of ${voucher.min_spend:.2f} required to apply this voucher."
+            "message": f"Minimum spend of ${min_spend:.2f} required to apply this voucher."
         }), 200
-        
-    # Check phone number validation if provided
-    if phone:
-        normalized = normalize_phone(phone)
-        # Check if this phone number has already used this voucher
-        redemption = VoucherRedemption.query.filter_by(
-            voucher_id=voucher.id,
-            phone_number=normalized
-        ).first()
-        if redemption:
-            return jsonify({
-                "valid": False,
-                "message": "This phone number has already used this voucher code."
-            }), 200
-        
+    if error:
+        return jsonify({"valid": False, "message": VOUCHER_MESSAGES[error]}), 200
+
     return jsonify({
         "valid": True,
         "message": "Voucher applied successfully! Free standard delivery.",
         "code": voucher.code,
         "min_spend": voucher.min_spend
     }), 200
-
-
-@home_bp.route("/api/use_voucher", methods=["POST"])
-def api_use_voucher():
-    data = request.get_json() or {}
-    code = data.get("code", "").strip().upper()
-    phone = data.get("phone", "").strip()
-    
-    if not code:
-        return jsonify({"success": False, "message": "Voucher code is required."}), 400
-    if not phone:
-        return jsonify({"success": False, "message": "Phone number is required."}), 400
-        
-    voucher = Voucher.query.filter_by(code=code).first()
-    
-    if not voucher:
-        return jsonify({"success": False, "message": "Invalid voucher code."}), 404
-        
-    if voucher.status != "true":
-        return jsonify({"success": False, "message": "This voucher is inactive."}), 400
-        
-    if voucher.usage_limit is not None and voucher.usage_count >= voucher.usage_limit:
-        return jsonify({"success": False, "message": "Voucher usage limit reached."}), 400
-        
-    normalized = normalize_phone(phone)
-    
-    # Check if this phone number has already used this voucher
-    existing_redemption = VoucherRedemption.query.filter_by(
-        voucher_id=voucher.id,
-        phone_number=normalized
-    ).first()
-    if existing_redemption:
-        return jsonify({"success": False, "message": "This phone number has already used this voucher code."}), 400
-        
-    try:
-        # Create redemption log
-        redemption = VoucherRedemption(
-            voucher_id=voucher.id,
-            phone_number=normalized
-        )
-        db.session.add(redemption)
-        
-        voucher.usage_count += 1
-        db.session.commit()
-        return jsonify({"success": True, "usage_count": voucher.usage_count}), 200
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({"success": False, "message": str(e)}), 500

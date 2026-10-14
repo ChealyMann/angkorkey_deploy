@@ -2,7 +2,7 @@ from datetime import datetime
 
 from flask import Blueprint, jsonify, make_response, request, session
 
-from extensions import db
+from extensions import db, limiter
 from models import Customer
 from services.customer_session import (
     customer_auth_enabled,
@@ -12,6 +12,7 @@ from services.customer_session import (
     refresh_customer_cookie,
     reset_customer_state,
 )
+from services.orders import OrderError, create_order
 from services.security import require_same_origin
 from services.telegram_auth import verify_login_widget, verify_webapp_init_data
 from services.telegram_bot import get_bot_token
@@ -133,3 +134,17 @@ def me_write_access():
     customer.can_message = allowed
     db.session.commit()
     return jsonify({"ok": True, "can_message": customer.can_message})
+
+
+@customer_bp.route('/api/orders', methods=['POST'])
+@limiter.limit("10 per minute", key_func=lambda: f"customer:{request.cookies.get('ak_customer','anon')}")
+def create_order_api():
+    require_same_origin()
+    customer = current_customer()
+    if customer is None:
+        return jsonify({"ok": False, "error": "sign_in_required"}), 401
+    try:
+        order = create_order(customer, _json_body())
+    except OrderError as exc:
+        return jsonify({"ok": False, "error": exc.code}), exc.status
+    return jsonify({"ok": True, "order_id": order.id, "url": f"/my-orders/{order.id}?new=1"}), 201
