@@ -96,6 +96,14 @@ TRANSLATIONS = {
         'clear_cart_desc': 'This will remove all items from your shopping cart. This action cannot be undone.',
         'cancel': 'Cancel',
         'clear': 'Clear',
+        'bot_order_received': 'We received your order #{id}. We will confirm it shortly.',
+        'bot_status_confirmed': 'Order #{id} is confirmed.',
+        'bot_status_packed': 'Order #{id} is packed and ready.',
+        'bot_status_delivering': 'Order #{id} is on its way to you.',
+        'bot_status_delivered': 'Order #{id} has been delivered. Thank you!',
+        'bot_status_cancelled': 'Order #{id} was cancelled. Message us if you have questions.',
+        'bot_btn_my_orders': 'My orders',
+        'bot_btn_chat': 'Chat with us',
     },
     'km': {
         'products': 'ផលិតផល',
@@ -194,5 +202,13 @@ TRANSLATIONS = {
         'clear_cart_desc': 'វានឹងលុបទំនិញទាំងអស់ចេញពីកន្ត្រកទំនិញរបស់អ្នក។ សកម្មភាពនេះមិនអាចត្រឡប់វិញបានទេ។',
         'cancel': 'បោះបង់',
         'clear': 'លុបសម្អាត',
+        'bot_order_received': 'យើងបានទទួលការកម្ម៉ង់ #{id} របស់អ្នកហើយ។ យើងនឹងបញ្ជាក់ក្នុងពេលឆាប់ៗ។',
+        'bot_status_confirmed': 'ការកម្ម៉ង់ #{id} ត្រូវបានបញ្ជាក់ហើយ។',
+        'bot_status_packed': 'ការកម្ម៉ង់ #{id} ត្រូវបានវេចខ្ចប់រួចរាល់។',
+        'bot_status_delivering': 'ការកម្ម៉ង់ #{id} កំពុងធ្វើដំណើរទៅរកអ្នក។',
+        'bot_status_delivered': 'ការកម្ម៉ង់ #{id} ត្រូវបានដឹកជូនដល់ហើយ។ សូមអរគុណ!',
+        'bot_status_cancelled': 'ការកម្ម៉ង់ #{id} ត្រូវបានលុបចោល។ សូមផ្ញើសារមកយើងប្រសិនបើមានសំណួរ។',
+        'bot_btn_my_orders': 'ការកម្ម៉ង់របស់ខ្ញុំ',
+        'bot_btn_chat': 'ជជែកជាមួយយើង',
     }
 }

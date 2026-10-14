@@ -13,7 +13,10 @@ def make_voucher(code="FREE", min_spend=0.0, usage_limit=None):
     return voucher
 
 
-def test_create_order_prices_from_database(client, login_as, make_customer, make_product):
+def test_create_order_prices_from_database(client, login_as, make_customer, make_product, monkeypatch):
+    import services.telegram_bot as tb
+    monkeypatch.setattr(tb, "notify_admin_new_order", lambda o: None)
+    monkeypatch.setattr(tb, "notify_customer_status", lambda o: None)
     _, variant = make_product(with_variant=True, variant_price=12.0, variant_cost=7.0)
     login_as(make_customer())
     r = post_order(client, items=[{"variantId": variant.id, "quantity": 2, "price": 0.01}])

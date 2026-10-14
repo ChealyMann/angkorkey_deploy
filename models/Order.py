@@ -33,7 +33,7 @@ class Order(db.Model):
                             cascade='all, delete-orphan')
     status_logs = db.relationship('OrderStatusLog', backref='order', lazy=True,
                                   cascade='all, delete-orphan',
-                                  order_by='OrderStatusLog.created_at')
+                                  order_by='[OrderStatusLog.created_at, OrderStatusLog.id]')
 
     def __repr__(self):
         return '<Order %r %r>' % (self.id, self.status)

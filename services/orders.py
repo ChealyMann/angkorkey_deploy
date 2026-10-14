@@ -1,5 +1,7 @@
 """Server-side order creation: prices and costs always come from the database."""
+import math
 import re
+from datetime import datetime, timedelta, timezone
 
 from flask import current_app
 
@@ -14,6 +16,13 @@ MAX_LINES = 50
 DEFAULT_STANDARD_FEE = 2.00
 DELIVERY_TYPES = ("standard", "grab")
 NOTIFY_ERROR_MAX = 255
+
+NEXT_STATUS = {"new": "confirmed", "confirmed": "packed", "packed": "delivering", "delivering": "delivered"}
+KH_TZ = timezone(timedelta(hours=7))  # Cambodia has no daylight saving
+_KH_OFFSET = KH_TZ.utcoffset(None)
+STUCK_NEW_AFTER = timedelta(hours=3)
+CASH_OVERDUE_AFTER = timedelta(hours=24)
+DELIVERY_DEADLINE_HOUR = 21
 
 _BASE_ID = re.compile(r"base_(\d+)")
 
@@ -108,14 +117,21 @@ def _required_text(payload: dict, key: str, error: str) -> str:
     return value.strip()
 
 
-def _notify(order: Order) -> None:
-    """Send Telegram notifications; record failures on the order. Never raises."""
+def _notify(order: Order, include_admin: bool = True) -> None:
+    """Send Telegram notifications; record failures on the order. Never raises.
+
+    Senders are looked up on `telegram_bot` at call time so tests can replace them.
+    """
+    order_id = order.id  # read first: later commits expire the instance
+    senders = [telegram_bot.notify_customer_status]
+    if include_admin:
+        senders.insert(0, telegram_bot.notify_admin_new_order)
     errors = []
-    for send in (telegram_bot.notify_admin_new_order, telegram_bot.notify_customer_status):
+    for send in senders:
         try:
             error = send(order)
         except Exception as exc:  # a send failure must never undo the order
-            current_app.logger.exception("Telegram notification failed for order %s", order.id)
+            current_app.logger.exception("Telegram notification failed for order %s", order_id)
             error = str(exc) or exc.__class__.__name__
         if error:
             errors.append(error)
@@ -126,7 +142,7 @@ def _notify(order: Order) -> None:
         db.session.commit()
     except Exception:
         db.session.rollback()
-        current_app.logger.exception("Could not record notify_error for order %s", order.id)
+        current_app.logger.exception("Could not record notify_error for order %s", order_id)
 
 
 def create_order(customer, payload: dict) -> Order:
@@ -195,3 +211,123 @@ def create_order(customer, payload: dict) -> Order:
 
     _notify(order)
     return order
+
+
+def advance_status(order: Order, to_status: str, now: datetime | None = None) -> None:
+    """Move an order one stage forward, or cancel it, then tell the customer.
+
+    Cancelling a delivered order is allowed here; the admin UI asks for confirmation.
+    """
+    if to_status != "cancelled" and NEXT_STATUS.get(order.status) != to_status:
+        raise OrderError("invalid_transition")
+    if to_status == "cancelled" and order.status == "cancelled":
+        raise OrderError("invalid_transition")
+    now = now or datetime.utcnow()
+    order.status_logs.append(OrderStatusLog(from_status=order.status, to_status=to_status, created_at=now))
+    order.status = to_status
+    order.status_changed_at = now
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        raise
+    _notify(order, include_admin=False)
+
+
+def set_grab_fee(order: Order, fee: float) -> None:
+    """Record the Grab driver's fee. The customer pays it in full, so profit is unaffected."""
+    try:
+        valid = order.delivery_type == "grab" and not isinstance(fee, bool) and math.isfinite(float(fee)) and fee >= 0
+    except (TypeError, ValueError):
+        valid = False
+    if not valid:
+        raise OrderError("invalid_fee")
+    fee = _money(fee)
+    order.delivery_fee_driver = order.delivery_fee_charged = fee
+    order.total_to_collect = _money((order.subtotal or 0) + fee)
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        raise
+
+
+def set_cash_received(order: Order, received: bool, now: datetime | None = None) -> None:
+    """Mark (or un-mark) the cash for a delivered order as handed over by the driver."""
+    if order.status != "delivered":
+        raise OrderError("invalid_transition")
+    order.cash_received = bool(received)
+    order.cash_received_at = (now or datetime.utcnow()) if received else None
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        raise
+
+
+def order_profit(order: Order) -> float:
+    """subtotal - cost - delivery subsidy (what the shop pays the driver beyond what the customer paid)."""
+    subsidy = max(0, (order.delivery_fee_driver or 0) - (order.delivery_fee_charged or 0))
+    return round((order.subtotal or 0) - (order.total_cost or 0) - subsidy, 2)
+
+
+def driver_payback(order: Order) -> float:
+    """What the driver hands back to the shop: cash collected minus the driver's own fee."""
+    return round((order.total_to_collect or 0) - (order.delivery_fee_driver or 0), 2)
+
+
+def needs_attention(order: Order, now: datetime | None = None) -> list[str]:
+    """Reason codes for why an order needs the admin's attention. Cancelled orders never do."""
+    if order.status == "cancelled":
+        return []
+    now = now or datetime.utcnow()
+    reasons = []
+    if any(item.unit_cost is None for item in order.items):
+        reasons.append("missing_cost")
+    if (order.status == "delivered" and not order.cash_received and order.status_changed_at
+            and now - order.status_changed_at > CASH_OVERDUE_AFTER):
+        reasons.append("cash_overdue")
+    if order.status == "new" and order.created_at and now - order.created_at > STUCK_NEW_AFTER:
+        reasons.append("stuck_new")
+    if order.status == "delivering" and order.status_changed_at:
+        # Deliveries should arrive by 21:00 Cambodia time on the day the order went out.
+        delivery_day = (order.status_changed_at + _KH_OFFSET).replace(
+            hour=DELIVERY_DEADLINE_HOUR, minute=0, second=0, microsecond=0)
+        if now + _KH_OFFSET >= delivery_day:
+            reasons.append("stuck_delivering")
+    if order.status == "delivered" and order.delivery_type == "grab" and order.delivery_fee_driver is None:
+        reasons.append("grab_fee_missing")
+    return reasons
+
+
+def range_bounds(range_key: str, now: datetime | None = None) -> tuple[datetime, datetime]:
+    """Naive-UTC [start, end) for "today", "7d" or "month", on the Cambodia calendar."""
+    now_kh = (now or datetime.utcnow()) + _KH_OFFSET
+    today = now_kh.replace(hour=0, minute=0, second=0, microsecond=0)
+    if range_key == "today":
+        start, end = today, today + timedelta(days=1)
+    elif range_key == "7d":
+        start, end = today - timedelta(days=6), today + timedelta(days=1)
+    elif range_key == "month":
+        start = today.replace(day=1)
+        end = (start + timedelta(days=32)).replace(day=1)
+    else:
+        raise OrderError("invalid_range")
+    return start - _KH_OFFSET, end - _KH_OFFSET
+
+
+def summary(range_key: str, now: datetime | None = None) -> dict:
+    """Order count, sales and profit (non-cancelled, by created_at) plus cash still with drivers."""
+    start, end = range_bounds(range_key, now)
+    orders = Order.query.filter(
+        Order.created_at >= start, Order.created_at < end, Order.status != "cancelled"
+    ).all()
+    awaiting_cash = Order.query.filter(
+        Order.status == "delivered", Order.cash_received.isnot(True)
+    ).all()
+    return {
+        "orders": len(orders),
+        "sales": round(sum(o.subtotal or 0 for o in orders), 2),
+        "profit": round(sum(order_profit(o) for o in orders), 2),
+        "cash_with_drivers": round(sum(driver_payback(o) for o in awaiting_cash), 2),
+    }

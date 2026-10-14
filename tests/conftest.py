@@ -138,3 +138,50 @@ def login_as(app, client):
         return customer
 
     return _login
+
+
+@pytest.fixture
+def order_factory(app, make_customer):
+    """Build and save a full Order with one item. Keyword overrides replace the defaults."""
+    import itertools
+    from datetime import datetime
+
+    from models import Order, OrderItem, OrderStatusLog
+
+    telegram_ids = itertools.count(900001)
+
+    def _make(customer=None, status="new", delivery_type="standard", subtotal=10.0,
+              total_cost=6.0, fee_charged=2.0, fee_driver=2.0, item_cost=6.0,
+              created_at=None, status_changed_at=None, cash_received=False):
+        if customer is None:
+            customer = make_customer(telegram_id=next(telegram_ids))
+        now = datetime.utcnow()
+        created_at = created_at or now
+        status_changed_at = status_changed_at or now
+        order = Order(
+            customer_id=customer.id,
+            status=status,
+            delivery_type=delivery_type,
+            delivery_fee_charged=fee_charged,
+            delivery_fee_driver=fee_driver,
+            subtotal=subtotal,
+            total_cost=total_cost,
+            total_to_collect=round(subtotal + (fee_charged or 0), 2),
+            phone="012345678",
+            address="Phnom Penh",
+            cash_received=cash_received,
+            created_at=created_at,
+            status_changed_at=status_changed_at,
+        )
+        order.items.append(OrderItem(
+            name="Test Item", options_text="", unit_price=subtotal,
+            unit_cost=item_cost, quantity=1,
+        ))
+        order.status_logs.append(OrderStatusLog(
+            from_status=None, to_status=status, created_at=created_at,
+        ))
+        db.session.add(order)
+        db.session.commit()
+        return order
+
+    return _make
