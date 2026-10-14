@@ -222,3 +222,17 @@ def test_closing_checkout_clears_resume_flag(client):
     html = html_of(client.get("/cart"))
     hide = html[html.index("function hideCheckoutModal()"):]
     assert "sessionStorage.removeItem(RESUME_KEY)" in hide[:400]
+
+
+def test_cart_shows_standard_delivery_fee_setting(client):
+    from models import Setting
+
+    Setting.set_val("standard_delivery_fee", "3.5")
+    html = html_of(client.get("/cart"))
+    assert "$3.50" in html and "$2.00" not in html
+    assert "const STANDARD_FEE = 3.5;" in html
+
+
+def test_cart_default_standard_delivery_fee(client):
+    html = html_of(client.get("/cart"))
+    assert "$2.00" in html and "const STANDARD_FEE = 2.0;" in html

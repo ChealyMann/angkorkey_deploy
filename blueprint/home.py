@@ -11,6 +11,7 @@ from models.ProductVariant import (
     ProductOptionType,
     VariantOption,
 )
+from services.orders import standard_delivery_fee
 from services.vouchers import check_voucher
 
 home_bp = Blueprint("home", __name__)
@@ -246,7 +247,8 @@ def product_detail(product_id):
 
 @home_bp.route("/cart")
 def cart():
-    return render_template("frontend/pages/cart.html")
+    # Not cached: the fee is an admin setting and must match what /api/orders charges.
+    return render_template("frontend/pages/cart.html", standard_delivery_fee=standard_delivery_fee())
 
 
 @home_bp.route("/categories")
