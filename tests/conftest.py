@@ -101,7 +101,7 @@ def make_product(app):
 @pytest.fixture
 def make_customer(app):
     def _make(telegram_id=111, first_name="Sokha", can_message=True):
-        from models import Customer  # added in Task 2
+        from models import Customer
 
         customer = Customer(
             telegram_id=telegram_id,

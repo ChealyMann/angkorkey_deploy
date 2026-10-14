@@ -8,3 +8,5 @@ from .Promotion import Promotion
 from .Setting import Setting
 from .Voucher import Voucher
 from .VoucherRedemption import VoucherRedemption
+from .Customer import Customer
+from .Order import Order, OrderItem, OrderStatusLog, ORDER_STATUSES
