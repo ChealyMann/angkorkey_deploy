@@ -4,6 +4,7 @@ import re
 from datetime import datetime, timedelta, timezone
 
 from flask import current_app
+from sqlalchemy.orm import selectinload
 
 from extensions import db
 from models import Order, OrderItem, OrderStatusLog, Product, Setting
@@ -268,6 +269,64 @@ def set_cash_received(order: Order, received: bool, now: datetime | None = None)
         raise
 
 
+def _recompute_total_cost(order: Order) -> None:
+    order.total_cost = _money(sum((item.unit_cost or 0) * (item.quantity or 0) for item in order.items))
+
+
+def set_item_cost(order: Order, item: OrderItem, cost: float) -> None:
+    """Set (or correct) one item's cost price, then recompute the order's total cost."""
+    try:
+        valid = (item.order_id == order.id and not isinstance(cost, bool)
+                 and math.isfinite(float(cost)) and cost >= 0)
+    except (TypeError, ValueError):
+        valid = False
+    if not valid:
+        raise OrderError("invalid_cost")
+    item.unit_cost = _money(cost)
+    _recompute_total_cost(order)
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        raise
+
+
+def fill_missing_costs() -> int:
+    """Copy today's product/variant cost into non-cancelled order items that have none.
+
+    Items whose product or variant still has no cost are left alone. Returns how many items were filled.
+    """
+    items = (OrderItem.query.join(Order, OrderItem.order_id == Order.id)
+             .filter(Order.status != "cancelled", OrderItem.unit_cost.is_(None)).all())
+    filled = 0
+    touched = set()
+    for item in items:
+        if item.variant_id is not None:
+            source = db.session.get(ProductVariant, item.variant_id)
+        else:
+            source = db.session.get(Product, item.product_id) if item.product_id is not None else None
+        if source is None or source.cost is None:
+            continue
+        item.unit_cost = _money(source.cost)
+        touched.add(item.order)
+        filled += 1
+    if not filled:
+        return 0
+    for order in touched:
+        _recompute_total_cost(order)
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        raise
+    return filled
+
+
+def cost_incomplete(order: Order) -> bool:
+    """True when any item has no cost price, so the order's profit is overstated."""
+    return any(item.unit_cost is None for item in order.items)
+
+
 def order_profit(order: Order) -> float:
     """subtotal - cost - delivery subsidy (what the shop pays the driver beyond what the customer paid)."""
     subsidy = max(0, (order.delivery_fee_driver or 0) - (order.delivery_fee_charged or 0))
@@ -285,7 +344,7 @@ def needs_attention(order: Order, now: datetime | None = None) -> list[str]:
         return []
     now = now or datetime.utcnow()
     reasons = []
-    if any(item.unit_cost is None for item in order.items):
+    if cost_incomplete(order):
         reasons.append("missing_cost")
     if (order.status == "delivered" and not order.cash_received and order.status_changed_at
             and now - order.status_changed_at > CASH_OVERDUE_AFTER):
@@ -320,11 +379,14 @@ def range_bounds(range_key: str, now: datetime | None = None) -> tuple[datetime,
 
 
 def summary(range_key: str, now: datetime | None = None) -> dict:
-    """Order count, sales and profit (non-cancelled, by created_at) plus cash still with drivers."""
+    """Order count, sales and profit (non-cancelled, by created_at) plus cash still with drivers.
+
+    `orders_missing_cost` counts the orders in the range whose profit is incomplete (an item has no cost).
+    """
     start, end = range_bounds(range_key, now)
     orders = Order.query.filter(
         Order.created_at >= start, Order.created_at < end, Order.status != "cancelled"
-    ).all()
+    ).options(selectinload(Order.items)).all()
     awaiting_cash = Order.query.filter(
         Order.status == "delivered", Order.cash_received.isnot(True)
     ).all()
@@ -332,5 +394,6 @@ def summary(range_key: str, now: datetime | None = None) -> dict:
         "orders": len(orders),
         "sales": round(sum(o.subtotal or 0 for o in orders), 2),
         "profit": round(sum(order_profit(o) for o in orders), 2),
+        "orders_missing_cost": sum(1 for o in orders if cost_incomplete(o)),
         "cash_with_drivers": round(sum(driver_payback(o) for o in awaiting_cash), 2),
     }

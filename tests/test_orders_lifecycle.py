@@ -3,11 +3,11 @@ from datetime import datetime, timedelta
 import pytest
 
 from extensions import db
-from models import Order
+from models import Order, OrderItem
 from services import telegram_bot
 from services.orders import (
-    KH_TZ, OrderError, advance_status, driver_payback, needs_attention, order_profit,
-    range_bounds, set_cash_received, set_grab_fee, summary,
+    KH_TZ, OrderError, advance_status, cost_incomplete, driver_payback, fill_missing_costs,
+    needs_attention, order_profit, range_bounds, set_cash_received, set_grab_fee, set_item_cost, summary,
 )
 
 _REAL_NOTIFY_CUSTOMER = telegram_bot.notify_customer_status
@@ -242,7 +242,8 @@ def test_summary_uses_cambodia_day_and_excludes_cancelled(order_factory):
     order_factory(created_at=datetime(2026, 10, 13, 18, 0), subtotal=10, total_cost=6)  # 01:00 KH 14 Oct -> today
     order_factory(created_at=datetime(2026, 10, 13, 16, 0), subtotal=99, total_cost=1)  # 23:00 KH 13 Oct -> not today
     order_factory(created_at=now, status="cancelled", subtotal=50, total_cost=10)
-    assert summary("today", now) == {"orders": 1, "sales": 10.0, "profit": 4.0, "cash_with_drivers": 0.0}
+    assert summary("today", now) == {"orders": 1, "sales": 10.0, "profit": 4.0, "orders_missing_cost": 0,
+                                     "cash_with_drivers": 0.0}
 
 
 def test_summary_ranges_and_cash_with_drivers_ignores_range(order_factory):
@@ -257,3 +258,80 @@ def test_summary_ranges_and_cash_with_drivers_ignores_range(order_factory):
     month = summary("month", now)
     assert month["orders"] == 3 and month["sales"] == 74.0
     assert month["cash_with_drivers"] == seven["cash_with_drivers"] == 24.0
+
+
+def test_summary_counts_orders_missing_cost(order_factory):
+    now = datetime(2026, 10, 14, 5, 0)
+    order_factory(created_at=now, item_cost=None)
+    order_factory(created_at=now, item_cost=None, status="cancelled")  # cancelled: not counted
+    order_factory(created_at=now)
+    assert summary("today", now)["orders_missing_cost"] == 1
+
+
+# ---- Cost prices ---------------------------------------------------------------
+
+def _add_item(order, unit_cost, quantity=1, product_id=None, variant_id=None):
+    item = OrderItem(name="Extra", options_text="", unit_price=5.0, unit_cost=unit_cost,
+                     quantity=quantity, product_id=product_id, variant_id=variant_id)
+    order.items.append(item)
+    db.session.commit()
+    return item
+
+
+def test_set_item_cost_sets_rounded_cost_and_recomputes_total(order_factory):
+    o = order_factory(item_cost=6.0, total_cost=6.0)
+    extra = _add_item(o, None, quantity=3)
+    set_item_cost(o, extra, 1.239)
+    o = db.session.get(Order, o.id)
+    assert db.session.get(OrderItem, extra.id).unit_cost == 1.24
+    assert o.total_cost == 9.72  # 6 + 1.24 * 3
+    assert cost_incomplete(o) is False
+    assert "missing_cost" not in needs_attention(o)
+
+
+def test_set_item_cost_can_correct_an_existing_cost(order_factory):
+    o = order_factory(item_cost=6.0, total_cost=6.0)
+    set_item_cost(o, o.items[0], 4)
+    assert db.session.get(Order, o.id).total_cost == 4.0
+
+
+@pytest.mark.parametrize("cost", [-1, float("nan"), float("inf"), True, "abc", None])
+def test_set_item_cost_rejects_bad_values(order_factory, cost):
+    o = order_factory(item_cost=None, total_cost=0)
+    with pytest.raises(OrderError) as exc:
+        set_item_cost(o, o.items[0], cost)
+    assert exc.value.code == "invalid_cost"
+    assert db.session.get(OrderItem, o.items[0].id).unit_cost is None
+
+
+def test_set_item_cost_rejects_item_of_another_order(order_factory):
+    a = order_factory()
+    b = order_factory()
+    with pytest.raises(OrderError):
+        set_item_cost(a, b.items[0], 1)
+
+
+def test_fill_missing_costs_copies_current_product_and_variant_costs(order_factory, make_product):
+    base, _ = make_product(cost=3.333)
+    with_variant, variant = make_product(with_variant=True, variant_cost=4.0)
+    no_cost, _ = make_product(cost=None)
+
+    o = order_factory(item_cost=6.0, total_cost=6.0)
+    from_base = _add_item(o, None, quantity=2, product_id=base.id)
+    from_variant = _add_item(o, None, product_id=with_variant.id, variant_id=variant.id)
+    still_missing = _add_item(o, None, product_id=no_cost.id)
+    cancelled = order_factory(status="cancelled", item_cost=None)
+    cancelled.items[0].product_id = base.id
+    db.session.commit()
+
+    assert fill_missing_costs() == 2
+    assert db.session.get(OrderItem, from_base.id).unit_cost == 3.33
+    assert db.session.get(OrderItem, from_variant.id).unit_cost == 4.0
+    assert db.session.get(OrderItem, still_missing.id).unit_cost is None
+    assert db.session.get(OrderItem, cancelled.items[0].id).unit_cost is None
+    assert db.session.get(Order, o.id).total_cost == 16.66  # 6 + 3.33 * 2 + 4
+
+
+def test_fill_missing_costs_with_nothing_to_fill(order_factory):
+    order_factory()
+    assert fill_missing_costs() == 0

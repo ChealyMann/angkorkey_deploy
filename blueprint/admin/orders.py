@@ -10,7 +10,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import selectinload
 
 from extensions import db
-from models import Order, Setting
+from models import Order, OrderItem, Setting
 from services import orders as order_service
 from services import telegram_bot
 from services.orders import KH_TZ, NEXT_STATUS, OrderError
@@ -52,6 +52,7 @@ ATTENTION_LABELS = {
 ERROR_MESSAGES = {
     "invalid_transition": "That change is not allowed at this stage of the order.",
     "invalid_fee": "Enter a Grab fee of 0 or more (Grab orders only).",
+    "invalid_cost": "Enter a cost price of 0 or more.",
 }
 
 
@@ -102,6 +103,7 @@ def _card(order: Order, reasons: list[str]) -> dict:
         "order": order,
         "item_count": sum(item.quantity or 0 for item in order.items),
         "profit": order_service.order_profit(order),
+        "profit_incomplete": order_service.cost_incomplete(order),
         "reasons": [ATTENTION_LABELS[code] for code in reasons],
         "next_status": NEXT_STATUS.get(order.status),
         "next_label": NEXT_LABELS.get(NEXT_STATUS.get(order.status)),
@@ -130,7 +132,7 @@ def _positive_int(value, default=1) -> int:
 
 
 def _flash_error(exc: OrderError) -> None:
-    flash(ERROR_MESSAGES.get(exc.code, f"Could not do that ({exc.code})."), "danger")
+    flash(ERROR_MESSAGES.get(exc.code, f"Could not do that ({exc.code})."), "error")
 
 
 def _order_or_404(order_id: int) -> Order:
@@ -268,6 +270,33 @@ def cash(order_id):
     except OrderError as exc:
         _flash_error(exc)
     return redirect(_back())
+
+
+@admin_orders_bp.route("/<int:order_id>/item/<int:item_id>/cost", methods=["POST"])
+def item_cost(order_id, item_id):
+    require_same_origin()
+    order = _order_or_404(order_id)
+    item = db.session.get(OrderItem, item_id)
+    if item is None or item.order_id != order.id:
+        abort(404)
+    try:
+        try:
+            cost = float(request.form.get("cost", "").strip())
+        except ValueError:
+            raise OrderError("invalid_cost")
+        order_service.set_item_cost(order, item, cost)
+        flash(f"Cost for {item.name} saved.", "success")
+    except OrderError as exc:
+        _flash_error(exc)
+    return redirect(_back("admin_orders.order_detail", order_id=order_id))
+
+
+@admin_orders_bp.route("/fill-costs", methods=["POST"])
+def fill_costs():
+    require_same_origin()
+    filled = order_service.fill_missing_costs()
+    flash(f"Filled {filled} item cost(s).", "success")
+    return redirect(_back(tab="attention"))
 
 
 @admin_orders_bp.route("/<int:order_id>/note", methods=["POST"])

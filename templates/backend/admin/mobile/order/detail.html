@@ -36,6 +36,10 @@
                     {{ item.unit_price|order_money }} each ·
                     {% if item.unit_cost is none %}<span class="nocost">no cost price</span>{% else %}cost {{ item.unit_cost|order_money }}{% endif %}
                 </small>
+                <form class="ord-form ord-cost-form" method="post" action="{{ url_for('admin_orders.item_cost', order_id=order.id, item_id=item.id) }}">
+                    <input class="form-control keyz-input" type="number" name="cost" step="0.01" min="0" inputmode="decimal" required placeholder="Cost each" aria-label="Cost price each for {{ item.name }}" value="{{ '%.2f'|format(item.unit_cost) if item.unit_cost is not none }}">
+                    <button type="submit" class="ord-btn">Save cost</button>
+                </form>
             </div>
             <div class="text-end">× {{ item.quantity }}<small>{{ ((item.unit_price or 0) * (item.quantity or 0))|order_money }}</small></div>
         </div>
@@ -49,7 +53,8 @@
         <h6>Money</h6>
         <div class="ord-row"><span>Item cost</span><span>{{ order.total_cost|order_money }}</span></div>
         <div class="ord-row"><span>Driver fee</span><span>{% if order.delivery_fee_driver is none %}—{% else %}{{ order.delivery_fee_driver|order_money }}{% endif %}</span></div>
-        <div class="ord-row strong"><span>Profit</span><span>{{ card.profit|order_money }}</span></div>
+        <div class="ord-row strong"><span>Profit</span><span>{{ card.profit|order_money }}{% if card.profit_incomplete %}*{% endif %}</span></div>
+        {% if card.profit_incomplete %}<div class="ord-note">* incomplete — some items have no cost price</div>{% endif %}
         <div class="ord-row"><span>Driver hands back</span><span>{{ driver_payback|order_money }}</span></div>
     </div>
 

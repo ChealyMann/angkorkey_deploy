@@ -23,7 +23,10 @@
     <div class="ord-stats">
         <div class="ord-stat"><b>{{ stats.orders }}</b><span>orders</span></div>
         <div class="ord-stat"><b>{{ stats.sales|order_money }}</b><span>sales</span></div>
-        <div class="ord-stat profit"><b>{{ stats.profit|order_money }}</b><span>profit</span></div>
+        <div class="ord-stat profit">
+            <b>{{ stats.profit|order_money }}{% if stats.orders_missing_cost %}*{% endif %}</b><span>profit</span>
+            {% if stats.orders_missing_cost %}<small class="missing">{{ stats.orders_missing_cost }} order(s) missing cost</small>{% endif %}
+        </div>
     </div>
     <div class="ord-sub mb-3">Cash still with drivers: <b>{{ stats.cash_with_drivers|order_money }}</b> ({{ awaiting_cash_orders }} order{{ '' if awaiting_cash_orders == 1 else 's' }})</div>
 
@@ -32,6 +35,12 @@
         <a class="ord-chip {{ 'attn' if key == 'attention' }} {{ 'active' if key == tab }}" href="{{ url_for('admin_orders.order_list', range=range_key, tab=key) }}">{{ label }} {{ counts[key] }}</a>
         {% endfor %}
     </div>
+
+    {% if tab == 'attention' %}
+    <form class="mb-3" method="post" action="{{ url_for('admin_orders.fill_costs') }}">
+        <button type="submit" class="ord-btn">Fill missing costs from products</button>
+    </form>
+    {% endif %}
 
     {% for card in cards %}
     {% set o = card.order %}
@@ -43,8 +52,9 @@
         <div class="meta">
             {{ card.item_count }} item{{ '' if card.item_count == 1 else 's' }}
             · {{ o.delivery_type|capitalize }}{% if o.delivery_type == 'grab' and o.delivery_fee_driver is none %} (fee to confirm){% endif %}
-            · {{ o.created_at|kh_time }} · profit {{ card.profit|order_money }}
+            · {{ o.created_at|kh_time }} · profit {{ card.profit|order_money }}{% if card.profit_incomplete %}*{% endif %}
         </div>
+        {% if card.profit_incomplete %}<div class="ord-note">* incomplete — some items have no cost price</div>{% endif %}
         {% if card.reasons %}
         <ul class="reasons">
             {% for reason in card.reasons %}<li>⚠ {{ reason }}</li>{% endfor %}

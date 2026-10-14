@@ -282,3 +282,74 @@ def test_new_order_count_is_zero_outside_admin(app, order_factory):
         assert inject_new_order_count() == {"new_order_count": 0}
     with app.test_request_context("/admin/mobile/orders/"):
         assert inject_new_order_count() == {"new_order_count": 1}
+
+
+# ---- Cost prices ---------------------------------------------------------------
+
+def test_item_cost_saves_and_recomputes_total_cost(admin_client, order_factory):
+    o = order_factory(item_cost=None, total_cost=0, subtotal=10)
+    item_id = o.items[0].id
+    r = admin_client.post(f"{BASE}/{o.id}/item/{item_id}/cost", data={"cost": "4.567"},
+                          headers=ORIGIN, follow_redirects=True)
+    assert "saved" in html_of(r)
+    o = db.session.get(Order, o.id)
+    assert o.items[0].unit_cost == 4.57 and o.total_cost == 4.57
+
+
+@pytest.mark.parametrize("bad", ["abc", "-1", "nan", "inf", ""])
+def test_item_cost_rejects_bad_values(admin_client, order_factory, bad):
+    o = order_factory(item_cost=None, total_cost=0)
+    r = admin_client.post(f"{BASE}/{o.id}/item/{o.items[0].id}/cost", data={"cost": bad},
+                          headers=ORIGIN, follow_redirects=True)
+    assert r.status_code == 200 and "cost price of 0 or more" in html_of(r)
+    assert db.session.get(Order, o.id).items[0].unit_cost is None
+
+
+def test_item_cost_requires_same_origin_and_matching_order(admin_client, order_factory):
+    a = order_factory(item_cost=None)
+    b = order_factory(item_cost=None)
+    path = f"{BASE}/{a.id}/item/{a.items[0].id}/cost"
+    assert admin_client.post(path, data={"cost": "1"}).status_code == 403
+    assert admin_client.post(f"{BASE}/{a.id}/item/{b.items[0].id}/cost", data={"cost": "1"},
+                             headers=ORIGIN).status_code == 404
+    assert admin_client.post(f"{BASE}/{a.id}/item/999/cost", data={"cost": "1"},
+                             headers=ORIGIN).status_code == 404
+    assert db.session.get(Order, a.id).items[0].unit_cost is None
+
+
+def test_detail_has_cost_form_per_item(admin_client, order_factory):
+    o = order_factory(item_cost=None)
+    html = html_of(admin_client.get(f"{BASE}/{o.id}"))
+    assert f'action="{BASE}/{o.id}/item/{o.items[0].id}/cost"' in html and 'name="cost"' in html
+
+
+def test_fill_costs_button_and_route(admin_client, order_factory, make_product):
+    product, _ = make_product(cost=2.5)
+    o = order_factory(item_cost=None, total_cost=0)
+    o.items[0].product_id = product.id
+    db.session.commit()
+    html = html_of(admin_client.get(BASE + "/?tab=attention"))
+    assert "Fill missing costs from products" in html and f'action="{BASE}/fill-costs"' in html
+    assert "Fill missing costs" not in html_of(admin_client.get(BASE + "/?tab=new"))
+
+    assert admin_client.post(BASE + "/fill-costs").status_code == 403
+    r = admin_client.post(BASE + "/fill-costs", headers=ORIGIN, follow_redirects=True)
+    assert "Filled 1 item cost(s)." in html_of(r)
+    assert db.session.get(Order, o.id).total_cost == 2.5
+
+
+def test_incomplete_profit_is_marked_on_card_detail_and_tile(admin_client, order_factory):
+    o = order_factory(status="new", item_cost=None, subtotal=10, total_cost=0)
+    note = "incomplete — some items have no cost price"
+    listing = html_of(admin_client.get(BASE + "/?tab=new&range=today"))
+    assert "profit $10.00*" in listing and note in listing
+    assert "$10.00*</b>" in listing and "1 order(s) missing cost" in listing
+    detail = html_of(admin_client.get(f"{BASE}/{o.id}"))
+    assert "$10.00*" in detail and note in detail
+
+
+def test_complete_profit_has_no_marker(admin_client, order_factory):
+    o = order_factory(status="new")
+    listing = html_of(admin_client.get(BASE + "/?tab=new&range=today"))
+    assert "incomplete" not in listing and "missing cost" not in listing and "$4.00*" not in listing
+    assert "incomplete" not in html_of(admin_client.get(f"{BASE}/{o.id}"))
