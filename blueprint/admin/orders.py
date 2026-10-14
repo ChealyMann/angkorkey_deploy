@@ -314,11 +314,11 @@ def test_message():
     require_same_origin()
     chat_id = str(Setting.get_val("telegram_admin_chat_id", "") or "").strip()
     if not chat_id:
-        flash("Enter and save the admin chat ID first.", "danger")
+        flash("Enter and save the admin chat ID first.", "error")
     else:
         error = telegram_bot.send_message(chat_id, "✅ Angkorkey test message")
         if error:
-            flash(f"Test message failed: {error}", "danger")
+            flash(f"Test message failed: {error}", "error")
         else:
             flash("Test message sent.", "success")
     return redirect(url_for("mobile.settings"))

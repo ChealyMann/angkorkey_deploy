@@ -103,7 +103,7 @@
     {% for category, message in messages %}
         Swal.fire({
             title: '{{ "ជោគជ័យ" if category == "success" else "បរាជ័យ" }}',
-            text: '{{ message }}',
+            text: {{ message|tojson }},
             icon: '{{ "error" if category == "error" else category }}',
             showConfirmButton: false,
             timer: 1800,

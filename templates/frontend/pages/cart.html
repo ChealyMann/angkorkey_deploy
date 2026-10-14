@@ -977,7 +977,8 @@
         const checkoutBtnLabel = document.getElementById('checkout-btn-label');
         let placing = false;
 
-        // Disable the confirm button while an order is being placed (the server also guards double taps).
+        // Disable the confirm button while the order request is in flight, so a double tap sends it once.
+        // The server has no idempotency check of its own.
         function setPlacing(on) {
             placing = on;
             checkoutBtn.disabled = on;

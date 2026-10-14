@@ -117,10 +117,31 @@
         return webAppSignIn;
     }
 
-    /* In the Mini App, ask once for permission to receive bot messages (order updates). */
+    var WRITE_ACCESS_DECLINED_KEY = 'angkorkey_write_access_declined';
+
+    function writeAccessDeclined() {
+        try {
+            return window.localStorage.getItem(WRITE_ACCESS_DECLINED_KEY) === '1';
+        } catch (e) {
+            return false;
+        }
+    }
+
+    function rememberWriteAccessAnswer(allowed) {
+        try {
+            if (allowed) {
+                window.localStorage.removeItem(WRITE_ACCESS_DECLINED_KEY);
+            } else {
+                window.localStorage.setItem(WRITE_ACCESS_DECLINED_KEY, '1');
+            }
+        } catch (e) { /* storage blocked: they may be asked again next order */ }
+    }
+
+    /* In the Mini App, ask once for permission to receive bot messages (order updates).
+       A "no" is remembered on this device, so later orders do not ask again. */
     function requestWriteAccessIfNeeded(data) {
         var app = webApp();
-        if (!isMiniApp() || !data || !data.signed_in || data.can_message
+        if (!isMiniApp() || !data || !data.signed_in || data.can_message || writeAccessDeclined()
                 || typeof app.requestWriteAccess !== 'function'
                 || (typeof app.isVersionAtLeast === 'function' && !app.isVersionAtLeast('6.9'))) {
             return Promise.resolve();
@@ -137,6 +158,7 @@
             var timer = setTimeout(finish, 30000);
             try {
                 app.requestWriteAccess(function (allowed) {
+                    rememberWriteAccessAnswer(!!allowed);
                     postJSON('/api/me/write-access', { allowed: !!allowed })
                         .catch(function () {})
                         .then(function () {

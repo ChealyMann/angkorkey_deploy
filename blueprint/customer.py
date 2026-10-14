@@ -53,7 +53,10 @@ def upsert_customer(tg_user: dict, can_message):
     customer.last_name = tg_user.get("last_name")
     customer.username = tg_user.get("username")
     customer.photo_url = tg_user.get("photo_url")
-    customer.lang = session.get("lang", "en")
+    if "lang" in session:  # the language the customer picked on the site
+        customer.lang = session["lang"]
+    else:  # otherwise their Telegram app language (Mini App only; the Login Widget does not send it)
+        customer.lang = "km" if tg_user.get("language_code") == "km" else "en"
     customer.last_login_at = datetime.utcnow()
     if can_message is not None:
         customer.can_message = bool(can_message)

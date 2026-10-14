@@ -23,8 +23,12 @@ def get_bot_token() -> str:
     return os.environ.get("TELEGRAM_BOT_TOKEN") or Setting.get_val("telegram_bot_token", "") or ""
 
 
-def _short(text) -> str:
-    return " ".join(str(text).split())[:ERROR_MAX] or "error"
+def _short(text, secret: str = "") -> str:
+    """One line of at most ERROR_MAX chars. `secret` is masked first, so truncation can't leave part of it."""
+    text = " ".join(str(text).split())
+    if secret:
+        text = text.replace(secret, "***")
+    return text[:ERROR_MAX] or "error"
 
 
 def _http_error_text(exc: urllib.error.HTTPError) -> str:
@@ -66,7 +70,7 @@ def send_message(chat_id, text: str, reply_markup: dict | None = None) -> str | 
         return _http_error_text(exc)
     except Exception as exc:
         # URLError and friends can echo the request URL, which contains the token.
-        return _short(str(exc) or exc.__class__.__name__).replace(token, "***")
+        return _short(str(exc) or exc.__class__.__name__, token)
 
 
 def _e(value) -> str:

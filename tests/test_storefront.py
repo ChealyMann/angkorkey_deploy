@@ -215,7 +215,7 @@ def test_telegram_auth_script_is_served(client):
 
 def test_layout_busts_service_worker_cache_for_auth_script(client):
     # sw.js serves /static/ cache-first forever, so the script URL must change with the file.
-    assert "js/telegram-auth.js?v=3" in html_of(client.get("/cart"))
+    assert "js/telegram-auth.js?v=4" in html_of(client.get("/cart"))
 
 
 def test_closing_checkout_clears_resume_flag(client):
@@ -247,3 +247,13 @@ def test_mini_app_checks_me_before_posting_init_data(client):
     # /api/me first; initData is posted only when that says signed out.
     assert ensure.index("webAppSignIn = me()") < ensure.index("postInitData()")
     assert "data.signed_in === true ? true : postInitData()" in ensure
+
+
+def test_declined_write_access_is_remembered(client):
+    response = client.get("/static/js/telegram-auth.js")
+    body = html_of(response)
+    response.close()
+    assert "'angkorkey_write_access_declined'" in body
+    request_fn = body[body.index("function requestWriteAccessIfNeeded(data)"):]
+    assert "writeAccessDeclined()" in request_fn[:400]
+    assert "rememberWriteAccessAnswer(!!allowed)" in request_fn

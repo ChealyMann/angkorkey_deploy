@@ -341,3 +341,22 @@ def test_auth_routes_and_me_are_exempt_from_default_rate_limit(client):
         limiter.reset()
     assert 429 not in me_codes | webapp_codes | widget_codes
     assert control[-1] == 429
+
+
+def test_login_language_falls_back_to_telegram_language_code(client, bot_token):
+    for telegram_id, code, expected in ((1, "km", "km"), (2, "ru", "en"), (3, None, "en")):
+        user = {"id": telegram_id, "first_name": "A"}
+        if code:
+            user["language_code"] = code
+        r = client.post("/auth/telegram/webapp", json={"init_data": signed_init_data(bot_token, user=user)},
+                        headers=ORIGIN)
+        assert r.status_code == 200
+        assert Customer.query.filter_by(telegram_id=telegram_id).one().lang == expected
+
+
+def test_session_language_beats_telegram_language_code(client, bot_token):
+    client.get("/set_lang/en")
+    user = {"id": 9, "first_name": "A", "language_code": "km"}
+    client.post("/auth/telegram/webapp", json={"init_data": signed_init_data(bot_token, user=user)},
+                headers=ORIGIN)
+    assert Customer.query.one().lang == "en"

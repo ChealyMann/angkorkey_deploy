@@ -199,3 +199,10 @@ def test_customer_other_failure_keeps_can_message(requests, order_factory, make_
     assert notify_customer_status(order)
     db.session.expire_all()
     assert customer.can_message is True
+
+
+def test_send_message_masks_token_before_truncating(requests):
+    # The token straddles the 200-char cut: masking after truncation would leak its first half.
+    requests.reply = urllib.error.URLError("x" * 180 + "123:ABC/sendMessage")  # str() adds "<urlopen error "
+    error = send_message(42, "hi")
+    assert "123" not in error and len(error) <= 200

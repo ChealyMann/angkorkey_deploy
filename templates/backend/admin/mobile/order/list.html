@@ -47,7 +47,7 @@
     <div class="order-card" id="order-{{ o.id }}">
         <div class="head">
             <a href="{{ url_for('admin_orders.order_detail', order_id=o.id) }}">#{{ o.id }} · {{ o.customer.display_name }}{% if o.notify_error %}<span class="notify-warn" title="Telegram message failed: {{ o.notify_error }}">⚠</span>{% endif %}</a>
-            <span class="total">{{ o.subtotal|order_money }}{% if o.delivery_type == 'grab' and o.delivery_fee_charged is none %} {{ _('grab_fee_pending') }}{% endif %}</span>
+            <span class="total">{{ o.total_to_collect|order_money }}{% if o.delivery_type == 'grab' and o.delivery_fee_charged is none %} {{ _('grab_fee_pending') }}{% endif %}</span>
         </div>
         <div class="meta">
             {{ card.item_count }} item{{ '' if card.item_count == 1 else 's' }}

@@ -353,3 +353,24 @@ def test_complete_profit_has_no_marker(admin_client, order_factory):
     listing = html_of(admin_client.get(BASE + "/?tab=new&range=today"))
     assert "incomplete" not in listing and "missing cost" not in listing and "$4.00*" not in listing
     assert "incomplete" not in html_of(admin_client.get(f"{BASE}/{o.id}"))
+
+
+def test_card_total_is_total_to_collect(admin_client, order_factory):
+    order_factory(status="new", subtotal=10, fee_charged=2)  # standard: 10 + 2
+    order_factory(status="new", delivery_type="grab", subtotal=7, fee_charged=None, fee_driver=None)
+    html = html_of(admin_client.get(BASE + "/?tab=new"))
+    assert '<span class="total">$12.00</span>' in html
+    assert '<span class="total">$7.00 + Grab fee</span>' in html
+
+
+def test_test_message_error_uses_error_category_and_json_text(admin_client, monkeypatch):
+    monkeypatch.setattr(telegram_bot, "send_message", lambda chat, text, markup=None: "it's <bad>")
+    Setting.set_val("telegram_admin_chat_id", "42")
+    html = html_of(admin_client.post(f"{BASE}/test-message", headers=ORIGIN, follow_redirects=True))
+    assert "icon: 'error'" in html and "icon: 'danger'" not in html
+    assert r'text: "Test message failed: it\u0027s \u003cbad\u003e",' in html
+
+
+def test_test_message_without_chat_id_uses_error_category(admin_client):
+    html = html_of(admin_client.post(f"{BASE}/test-message", headers=ORIGIN, follow_redirects=True))
+    assert "icon: 'error'" in html and 'text: "Enter and save the admin chat ID first.",' in html
