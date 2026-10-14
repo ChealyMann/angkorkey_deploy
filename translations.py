@@ -106,6 +106,8 @@ TRANSLATIONS = {
         'bot_btn_chat': 'Chat with us',
         # Storefront: sign-in, checkout and My orders
         'my_orders': 'My orders',
+        'log_out': 'Log out',
+        'signed_in_as': 'Signed in as',
         'order_placed': 'Order placed',
         'order_placed_desc': 'We received your order and will confirm it shortly.',
         'order_number': 'Order number',
@@ -246,6 +248,8 @@ TRANSLATIONS = {
         'bot_btn_chat': 'ជជែកជាមួយយើង',
         # Storefront: sign-in, checkout and My orders
         'my_orders': 'ការកុម្ម៉ង់របស់ខ្ញុំ',
+        'log_out': 'ចាកចេញ',
+        'signed_in_as': 'បានចូលជា',
         'order_placed': 'កុម្ម៉ង់បានជោគជ័យ',
         'order_placed_desc': 'យើងបានទទួលការកុម្ម៉ង់របស់អ្នក ហើយនឹងបញ្ជាក់ក្នុងពេលឆាប់ៗ។',
         'order_number': 'លេខការកុម្ម៉ង់',

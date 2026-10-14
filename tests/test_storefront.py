@@ -287,3 +287,24 @@ def test_checkout_opens_telegram_login_popup(client):
     assert "Telegram.Login.auth" in js and "popupSignIn" in js and "knownSignedOut" in js
     cart = client.get("/cart").get_data(as_text=True)
     assert "auth.popupSignIn()" in cart
+
+
+# ---- Customer log out -------------------------------------------------------------
+
+def test_my_orders_shows_logout_when_signed_in(client, login_as, make_customer):
+    login_as(make_customer(first_name="Sokha"))
+    html = html_of(client.get("/my-orders"))
+    assert 'id="customer-logout-btn"' in html and "Sokha" in html
+
+
+def test_my_orders_has_no_logout_when_signed_out(client):
+    assert 'id="customer-logout-btn"' not in html_of(client.get("/my-orders"))
+
+
+def test_logout_signs_customer_out(client, login_as, make_customer):
+    login_as(make_customer())
+    assert client.get("/api/me").json["signed_in"] is True
+    r = client.post("/auth/logout", headers={"Origin": "http://localhost"})
+    assert r.status_code == 200
+    assert client.get("/api/me").json == {"signed_in": False}
+    assert 'id="customer-logout-btn"' not in html_of(client.get("/my-orders"))

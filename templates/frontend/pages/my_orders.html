@@ -6,8 +6,42 @@
 {% block content %}
 <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-24 font-sans text-zinc-900 dark:text-zinc-100">
 
-    <div class="flex items-center justify-between mb-8 border-b border-zinc-100 dark:border-zinc-900 pb-5">
+    <div class="flex items-center justify-between gap-4 mb-8 border-b border-zinc-100 dark:border-zinc-900 pb-5">
         <h1 class="serif text-4xl font-bold tracking-tight">{{ _('my_orders') }}</h1>
+        {% if signed_in %}
+        {# Hidden inside the Mini App: Telegram signs the customer straight back in there. #}
+        <div class="text-right" data-logout-box>
+            <p class="text-xs text-zinc-500 dark:text-zinc-400 mb-1.5">{{ _('signed_in_as') }} <span class="font-semibold text-zinc-800 dark:text-zinc-200">{{ customer.display_name }}</span></p>
+            <button type="button" id="customer-logout-btn" class="inline-flex items-center gap-1.5 border border-zinc-300 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 px-3 py-1.5 text-xs font-semibold uppercase tracking-wider hover:bg-zinc-950 hover:text-white dark:hover:bg-zinc-50 dark:hover:text-zinc-950 transition-colors cursor-pointer bg-transparent">
+                <i class="w-3.5 h-3.5" data-lucide="log-out"></i> <span>{{ _('log_out') }}</span>
+            </button>
+        </div>
+        <script>
+            (function () {
+                var box = document.querySelector('[data-logout-box]');
+                if (window.AngkorAuth && window.AngkorAuth.isMiniApp()) {
+                    if (box) box.classList.add('hidden');
+                    return;
+                }
+                var btn = document.getElementById('customer-logout-btn');
+                if (!btn) return;
+                btn.addEventListener('click', function () {
+                    btn.disabled = true;
+                    fetch('/auth/logout', { method: 'POST', credentials: 'same-origin' })
+                        .catch(function () {})
+                        .then(function () {
+                            // Don't leave this customer's delivery details on a shared device.
+                            try {
+                                ['checkout_address', 'checkout_maps', 'checkout_phone'].forEach(function (k) {
+                                    localStorage.removeItem(k);
+                                });
+                            } catch (e) {}
+                            window.location.href = '/';
+                        });
+                });
+            })();
+        </script>
+        {% endif %}
     </div>
 
     {% if not signed_in %}

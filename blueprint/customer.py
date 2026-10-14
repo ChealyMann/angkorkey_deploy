@@ -206,7 +206,8 @@ def my_orders():
     orders = (query.options(selectinload(Order.items))
               .order_by(Order.created_at.desc(), Order.id.desc())
               .limit(MY_ORDERS_PAGE_SIZE).offset((page - 1) * MY_ORDERS_PAGE_SIZE).all())
-    return render_template('frontend/pages/my_orders.html', signed_in=True, orders=orders, page=page, pages=pages)
+    return render_template('frontend/pages/my_orders.html', signed_in=True, orders=orders, page=page, pages=pages,
+                           customer=customer)
 
 
 @customer_bp.route('/my-orders/<int:order_id>')
